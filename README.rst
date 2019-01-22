@@ -11,6 +11,7 @@ pyqsl can be installed using pip, but is not yeat available through public repos
   pip3 install -r requirements.txt .
 
 Optionally, can be installed installed in a virtual environment using virtualenv. In order to create and activate the virtual environment, run ::
+  
   python3 -m venv env
   source env/bin/activate
   pip3 install -r requirements.txt .
