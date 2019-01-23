@@ -1,0 +1,209 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pyqsl package &#8212; pyqsl 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="pyqsl-package">
+<h1>pyqsl package<a class="headerlink" href="#pyqsl-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-pyqsl.core">
+<span id="pyqsl-core-module"></span><h2>pyqsl.core module<a class="headerlink" href="#module-pyqsl.core" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="pyqsl.core.default_save_data_function">
+<code class="descclassname">pyqsl.core.</code><code class="descname">default_save_data_function</code><span class="sig-paren">(</span><em>save_path</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>output_array</em>, <em>save_element_function</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#default_save_data_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.default_save_data_function" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pyqsl.core.default_save_element_fun">
+<code class="descclassname">pyqsl.core.</code><code class="descname">default_save_element_fun</code><span class="sig-paren">(</span><em>save_path</em>, <em>output</em>, <em>ii</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#default_save_element_fun"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.default_save_element_fun" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the element using qutip qsave function</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>save_path</strong> (<em>str</em>) – The path to which the data is saved.</li>
+<li><strong>output</strong> (<em>obj</em>) – The object to save.</li>
+<li><strong>ii</strong> (<em>int</em>) – The serial index of the output element in the simulation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyqsl.core.default_save_parameters_function">
+<code class="descclassname">pyqsl.core.</code><code class="descname">default_save_parameters_function</code><span class="sig-paren">(</span><em>full_save_path</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#default_save_parameters_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.default_save_parameters_function" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pyqsl.core.save_data">
+<code class="descclassname">pyqsl.core.</code><code class="descname">save_data</code><span class="sig-paren">(</span><em>save_path</em>, <em>output_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>save_element_fun=&lt;function default_save_element_fun&gt;</em>, <em>save_parameters_function=&lt;function default_save_parameters_function&gt;</em>, <em>save_data_function=&lt;function default_save_data_function&gt;</em>, <em>use_date_directory_structure=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the data to a directory given by save_path/data/current_date if use_date_directory_structure is True. Otherwise saves the data to save_path/.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>save_path</strong> (<em>str</em>) – Full path to which data is saved.</li>
+<li><strong>ouput_array</strong> (<em>array_like</em>) – An array containing the output of the simulation. Should have dimensions n1*n2*n3…ni*nbr_outputs, where i is the number of dimensions in the simulation and nbr_outputs is the number of elements in the output.</li>
+<li><strong>params</strong> (<em>dict</em>) – A dictionary containing the simulation parameters.</li>
+<li><strong>sweep_arrays</strong> (<em>dict</em>) – A dictionary containing the parameters that are being swept as keys and arrays of swept parameters as values.</li>
+<li><strong>derived_arrays</strong> (<em>dict</em>) – A dictionary containing dictionaries of parameters that are related to parameters in sweep_arrays</li>
+<li><strong>save_element_fun</strong> (<em>function handle</em><em>, </em><em>optional</em>) – A function containing instructions for saving a single element in the output_array. Needs to have format save_element_fun(save_path,output,ii), where save_path is the path to which data is saved, output is a
+single elmenet of output array and ii is the index of the serialized element.</li>
+<li><strong>save_parameters_fun</strong> (<em>function handle</em><em>, </em><em>optional</em>) – A function used to save the parameters dictionary. Has the format save_parameters_fun(full_save_path,params,sweep_arrays,derived_arrays)</li>
+<li><strong>use_date_directory_structure</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, add date structure to save_path, otherwise save directly to save_path.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyqsl.core.save_data_hdf5">
+<code class="descclassname">pyqsl.core.</code><code class="descname">save_data_hdf5</code><span class="sig-paren">(</span><em>filename</em>, <em>data_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>use_date_directory_structure=True</em>, <em>overwrite=False</em>, <em>save_path=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data_hdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data_hdf5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the simulation data to hdf5 file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filename</strong> (<em>str</em>) – The name of the log file.</li>
+<li><strong>data_array</strong> (<em>list of dicts</em><em> or </em><em>list of dicts of dicts</em>) – A list which size equal to the total number of elements in the simulation.
+Each element of the list is a dictionary with the name of the data variable as the key and
+the value of the element as the value. If the simulation result contains vector data, the value of an element
+can be another dictionary which keys are the names of the vector variables and values are arrays containing the data. If the name of the vector variable is found in the params dictionary, it has to have the same number of elements as is the length of the data vector.</li>
+<li><strong>sweep_arrays</strong> (<em>dict of lists</em>) – A dictionary which keys are the names of the swept parameters and the values are the arrays which are swept.</li>
+<li><strong>derived_arrays</strong> (<em>dict of dict of list</em>) – A dictionary which keys are the names of the variables from which the arrays are derived. The names have also to be keys in the sweep_arrays variable. Values of the dictionary are an other dictionary which keys are names of the derived arrays and values are arrays according to which the parameter is varied. The array has to have length equal to the corresponding parameter in the sweep_arrays.</li>
+<li><strong>use_data_directory_structure</strong> (<em>bool</em>) – Indicates whether the data should be saved in a directory structure containing the current date. Has to be True if Labber databases are to be used. Currently Labber automatically uses a main directory which can only be set from the LogBrowser program (or config file).</li>
+<li><strong>overwrite</strong> (<em>bool</em>) – If True, previous simulation data with the same name will be overwritten. Otherwise will append _n to the end of the filename if the file with the same name already exists.</li>
+<li><strong>save_path</strong> (<em>str</em>) – The path to which the data should be saved. Currently it is not possible to easily set in Labber, and thus it is recommended not to use this variable.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The full save path including the name of the file the data is saved to.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyqsl.core.simulation_loop">
+<code class="descclassname">pyqsl.core.</code><code class="descname">simulation_loop</code><span class="sig-paren">(</span><em>params</em>, <em>simulation_task</em>, <em>sweep_arrays={}</em>, <em>derived_arrays={}</em>, <em>pre_processing_before_loop=None</em>, <em>pre_processing_in_the_loop=None</em>, <em>post_processing_in_the_loop=None</em>, <em>parallelize=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#simulation_loop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.simulation_loop" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is the main simulation loop.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>params</strong> (<em>dict</em>) – A dictionary containing the simulation parameters. The key is a string giving the name of the parameter.</li>
+<li><strong>simulation_task</strong> (<em>function handle</em>) – A function that performs the simulation. Should have form [output = simulation_task(params)], where output
+is the result of the simulation.</li>
+<li><strong>sweep_arrays</strong> (<em>dict</em><em>, </em><em>opt</em>) – A dictionary containing the parameters that are being swept as keys and arrays of swept parameters as values.</li>
+<li><strong>derived_arrays</strong> (<em>dict</em><em>, </em><em>opt</em>) – A dictionary containing dictionaries of parameters that are related to parameters in sweep_arrays</li>
+<li><strong>pre_processing_before_loop</strong> (<em>function handle</em><em>, </em><em>opt</em>) – Function to pre-process the parameter array. Takes params dictionary as an input.</li>
+<li><strong>pre_processing_in_the_loop</strong> (<em>function handle</em><em>, </em><em>opt</em>) – Modifies the parameter array in the loop. All the parameters that are dependant on the swept parameters should be recalculated here.</li>
+<li><strong>post_processing_in_the_loop</strong> (<em>function handle</em><em>, </em><em>opt</em>) – Function can be used to modify the output of the simulation task. Takes params as an input.</li>
+<li><strong>parallelize</strong> (<em>bool</em><em>, </em><em>opt</em>) – Boolean indicating whether the computation should be parallelized.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyqsl.core.simulation_loop_body">
+<code class="descclassname">pyqsl.core.</code><code class="descname">simulation_loop_body</code><span class="sig-paren">(</span><em>ii</em>, <em>params</em>, <em>dims</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>pre_processing_in_the_loop</em>, <em>post_processing_in_the_loop</em>, <em>simulation_task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#simulation_loop_body"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.simulation_loop_body" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-pyqsl">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-pyqsl" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Antti Vepsäläinen.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/pyqsl.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
