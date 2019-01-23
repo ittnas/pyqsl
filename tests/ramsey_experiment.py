@@ -1,6 +1,8 @@
 import numpy as np
-from pyqsl import core
+#from pyqsl import core
+import pyqsl.core as pyqsl
 from qutip import *
+import logging
 
 # A simple Ramsey experiment
 
@@ -11,7 +13,7 @@ params = {
     "t1":1000e-9*ts
 }
 
-sweep_arrays = {"dw":np.linspace(-10e6 * 2*np.pi/ts,10e6 * 2*np.pi/ts,101)}
+sweep_arrays = {"dw":np.linspace(-10e6 * 2*np.pi/ts,10e6 * 2*np.pi/ts,1001)}
 
 def pre_processing_before_loop(params,*args,**kwargs):
     #params["wd"] = params["wq"] + params["dw"]
@@ -39,6 +41,8 @@ def qubit_simulation_example_labber(params,*args,**kwargs):
     return output
 
 
-output_list = core.simulation_loop(params,qubit_simulation_example_labber,sweep_arrays = sweep_arrays,pre_processing_before_loop = pre_processing_before_loop,pre_processing_in_the_loop = pre_processing_in_the_loop)
-#full_save_path = save_data('./',output_list,params,sweep_arrays,derived_arrays,default_save_element_fun,save_parameters_function_with_pickle)
-core.save_data_hdf5("ramsey",output_list,params,sweep_arrays,[],use_date_directory_structure=False,overwrite=True)
+logging.basicConfig(level=logging.INFO)
+
+output_list = pyqsl.simulation_loop(params,qubit_simulation_example_labber,sweep_arrays = sweep_arrays,pre_processing_before_loop = pre_processing_before_loop,pre_processing_in_the_loop = pre_processing_in_the_loop,parallelize=True)
+
+pyqsl.save_data_hdf5("ramsey",output_list,params,sweep_arrays,[],use_date_directory_structure=False,overwrite=True)

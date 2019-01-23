@@ -8,25 +8,38 @@ import matplotlib.pyplot as plt
 import sys
 import json
 import pickle
-#import noise_generator as ng
 import traceback
 import collections
-sys.path.insert(0, '/usr/share/Labber/Script')
-import Labber
+import logging
+sys.path.insert(0, '/usr/share/Labber/Script') # For Labber
+import multiprocessing as mp
+from functools import partial
 
 def default_save_element_fun(save_path,output,ii):
+    """ Saves the element using qutip qsave function
+    
+    Parameters
+    ----------
+    save_path : str
+        The path to which the data is saved.
+    output : obj
+        The object to save.
+    ii : int
+        The serial index of the output element in the simulation.
+    """
     qsave(output,os.path.join(save_path,'qobject_' + str(ii)))
 
 def default_save_parameters_function(full_save_path,params,sweep_arrays,derived_arrays):
-    #print('In the default save elements fun.')
     with open(os.path.join(full_save_path,'parameters.json'),'w') as f:
         try:
             json.dump(params,f)
-        except Exception:
-            print('Unable to dump parameters to a file. Parameters are not saved.')
-            print('-'*60)
-            traceback.print_exc(file=sys.stdout)
-            print('-'*60)
+        except Exception as e:
+            logging.warning('Unable to dump parameters to a file. Parameters are not saved.')
+            logging.warning(e,exc_info=True)
+            #print('Unable to dump parameters to a file. Parameters are not saved.')
+            #print('-'*60)
+            #traceback.print_exc(file=sys.stdout)
+            #print('-'*60)
 
 
     with open(os.path.join(full_save_path,'sweep_arrays.json'),'w') as f:
@@ -36,11 +49,13 @@ def default_save_parameters_function(full_save_path,params,sweep_arrays,derived_
             sweep_arrays_s[key] = str(value)
         try:
             json.dump(sweep_arrays_s,f)
-        except Exception:
-            print('Unable to dump sweep_arrays to a file. Sweep arrays are not saved.')
-            print('-'*60)
-            traceback.print_exc(file=sys.stdout)
-            print('-'*60)
+        except Exception as e:
+            logging.warning('Unable to dump sweep_arrays to a file. Sweep arrays are not saved.')
+            logging.warning(e,exc_info=True)
+            #print('Unable to dump sweep_arrays to a file. Sweep arrays are not saved.')
+            #print('-'*60)
+            #traceback.print_exc(file=sys.stdout)
+            #print('-'*60)
 
 
     with open(os.path.join(full_save_path,'derived_arrays.json'),'w') as f:
@@ -50,19 +65,56 @@ def default_save_parameters_function(full_save_path,params,sweep_arrays,derived_
             derived_arrays_s[key] = str(value)
         try:
             json.dump(derived_arrays_s,f)
-        except Exception:
-            print('Unable to dump derived_arrays to a file. Derived arrays are not saved.')
-            print('-'*60)
-            traceback.print_exc(file=sys.stdout)
-            print('-'*60)
+        except Exception as e:
+            logging.warning('Unable to dump derived_arrays to a file. Derived arrays are not saved.')
+            logging.warning(e,exc_info=True)
+
+            #print('Unable to dump derived_arrays to a file. Derived arrays are not saved.')
+            #print('-'*60)
+            #traceback.print_exc(file=sys.stdout)
+            #print('-'*60)
 
 def default_save_data_function(save_path,sweep_arrays,derived_arrays,output_array,save_element_function):
     try:
         for ii,output in enumerate(output_array):
             save_element_function(save_path,output,ii)
-    except Exception:
-        print('Error in the save_element_fun. Data cannot be saved. The error is: ', sys.exc_info()[1])
+    except Exception as e:
+        #print('Error in the save_element_fun. Data cannot be saved. The error is: ', sys.exc_info()[1])
+        logging.warning('Error in the save_element_fun. Data cannot be saved.')
+        logging.warning(e,exc_info=True)
 
+def simulation_loop_body(ii,params,dims,sweep_arrays,derived_arrays,pre_processing_in_the_loop,post_processing_in_the_loop,simulation_task):
+    # The master loop
+    params_private = copy.deepcopy(params) # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
+    current_ind = np.unravel_index(ii,dims)
+    sweep_array_index = 0
+    for key,value in sweep_arrays.items():
+        # Update all the parameters
+        params_private[key] = sweep_arrays[key][current_ind[sweep_array_index]]
+        sweep_array_index = sweep_array_index + 1
+        #print(params_private)
+
+    # Update the paremeters based on the derived arrays
+    derived_arrays_index = 0
+    for key,value in derived_arrays.items():
+        for subkey, subvalue in value.items():
+            # Update all the parameters
+            params_private[subkey] = derived_arrays[key][subkey][current_ind[derived_arrays_index]]
+            #[current_ind[sweep_array_index]]
+        #print(params_private)
+        derived_arrays_index = derived_arrays_index + 1
+        
+
+    if(pre_processing_in_the_loop):
+        pre_processing_in_the_loop(params_private)
+        
+        # params_private now contains all the required information to run the simulation
+    output = simulation_task(params_private)
+    
+    if(post_processing_in_the_loop):
+        output = post_processing_in_the_loop(output,params)
+    return output
+    
 def simulation_loop(params,simulation_task,sweep_arrays = {},derived_arrays = {},pre_processing_before_loop = None,pre_processing_in_the_loop = None, post_processing_in_the_loop = None, parallelize=False):
     """
     This is the main simulation loop.
@@ -76,53 +128,35 @@ def simulation_loop(params,simulation_task,sweep_arrays = {},derived_arrays = {}
         is the result of the simulation.
     """
     start_time = datetime.datetime.now()
-    print('Simulation started at ' + str(start_time))
+    logging.info('Simulation started at ' + str(start_time))
+    #print('Simulation started at ' + str(start_time))
     dims = []
     for key,value in sweep_arrays.items():
         dims.append(len(value))
 
-    print(dims)
+    logging.debug(dims)
     if dims ==[]:
         dims = 1
     N_tot = np.prod(dims)
-    print('Sweep dimensions: ' + str(dims) + '.')
+    #print('Sweep dimensions: ' + str(dims) + '.')
+    logging.info('Sweep dimensions: ' + str(dims) + '.')
     output_array = [None]*N_tot
 
     if(pre_processing_before_loop):
         pre_processing_before_loop(params)
 
-    for ii in range(N_tot):
-        # The master loop
-        params_private = copy.deepcopy(params) # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
-        current_ind = np.unravel_index(ii,dims)
-        sweep_array_index = 0
-        for key,value in sweep_arrays.items():
-             # Update all the parameters
-             params_private[key] = sweep_arrays[key][current_ind[sweep_array_index]]
-             sweep_array_index = sweep_array_index + 1
-             #print(params_private)
 
-        # Update the paremeters based on the derived arrays
-        derived_arrays_index = 0
-        for key,value in derived_arrays.items():
-            for subkey, subvalue in value.items():
-                # Update all the parameters
-                params_private[subkey] = derived_arrays[key][subkey][current_ind[derived_arrays_index]]
-                #[current_ind[sweep_array_index]]
-            #print(params_private)
-            derived_arrays_index = derived_arrays_index + 1
-
-
-        if(pre_processing_in_the_loop):
-            pre_processing_in_the_loop(params_private)
-        
-        # params_private now contains all the required information to run the simulation
-        output = simulation_task(params_private)
-        if(post_processing_in_the_loop):
-            output = post_processing_in_the_loop(output,params)
-        output_array[ii] = output
+    simulation_loop_body_partial = partial(simulation_loop_body,params=params,dims=dims,sweep_arrays=sweep_arrays,derived_arrays=derived_arrays,pre_processing_in_the_loop=pre_processing_in_the_loop,post_processing_in_the_loop=post_processing_in_the_loop,simulation_task=simulation_task)
+    if parallelize:
+        with mp.Pool(processes=None) as p:
+            output_array = p.map(simulation_loop_body_partial,range(N_tot))
+    else:
+        for ii in range(N_tot):
+            output = simulation_loop_body_partial(ii)
+            output_array[ii] = output
     end_time = datetime.datetime.now()
-    print('Simulation finished at ' + str(end_time) + '. The duration of the simulation was ' + str(end_time-start_time) + '.')
+    logging.info('Simulation finished at ' + str(end_time) + '. The duration of the simulation was ' + str(end_time-start_time) + '.')
+    #print('Simulation finished at ' + str(end_time) + '. The duration of the simulation was ' + str(end_time-start_time) + '.')
     return output_array
 
 def save_data(save_path,output_array,params,sweep_arrays,derived_arrays,save_element_fun = default_save_element_fun, save_parameters_function = default_save_parameters_function, save_data_function = default_save_data_function, use_date_directory_structure = True):
@@ -158,7 +192,9 @@ def save_data(save_path,output_array,params,sweep_arrays,derived_arrays,save_ele
         # path already exists, just continue
         pass
     except OSError as err:
-        print('Error while creating the saving directory. Data cannot be saved. The error is:',sys.exc_info()[1])
+        logging.error('Error while creating the saving directory. Data cannot be saved.')
+        logging.error(err,exc_info=True)
+        #print('Error while creating the saving directory. Data cannot be saved. The error is:',sys.exc_info()[1])
 
 
     # Saving parameters
@@ -195,6 +231,13 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         The full save path including the name of the file the data is saved to.
         
     """
+    try:
+        import Labber # import Labber only if it is needed.
+    except ImportError as err:
+        logging.error('Labber script tools could not be found. Data is not saved.')
+        logging.error(err,exc_info=True)
+        #print('Labber script tools could not be found. Data is not saved.')
+        return None
     dims = []
     for key,value in sweep_arrays.items():
         dims.append(len(value))
@@ -242,7 +285,8 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
                 #print(channel_dict)
                 log_channels.append(channel_dict)
         except ValueError:
-            print('Parameter ' + param_name + ' cannot be saved.')
+            logging.warning('Parameter ' + param_name + ' cannot be saved.')
+            #print('Parameter ' + param_name + ' cannot be saved.')
             pass
 
     unique_filename = os.path.join(save_path,filename)
@@ -252,7 +296,7 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         f_temp = Labber.createLogFile_ForData(os.path.join(save_path,'dummy_file_name'),'')
         filename_temp = f_temp.getFilePath('')
         os.remove(filename_temp)
-        print(filename_temp)
+        logging.debug(filename_temp)
         dirname = os.path.dirname(filename_temp)
         unique_filename = os.path.join(save_path,filename)
         ii=1
@@ -264,16 +308,17 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
            print(os.path.join(dirname,unique_filename))
            ii = ii + 1
            if ii > 100:
-               print('Could not create unique filename for ' + filename)
+               logging.warning('Could not create unique filename for ' + filename)
+               #print('Could not create unique filename for ' + filename)
                return ''
 
-    print(os.path.join(save_path,unique_filename))
+    logging.debug(os.path.join(save_path,unique_filename))
     f = Labber.createLogFile_ForData(os.path.join(save_path,unique_filename),data_dicts,log_channels,use_database= not use_date_directory_structure)
 
     channel = channels[0]
     jj = 0
     n_lowest = len(channel['values'])
-    print(n_lowest)
+    logging.debug(n_lowest)
     if vector_in_the_data:
         skip = 1
     else:
