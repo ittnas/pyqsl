@@ -14,6 +14,7 @@ import logging
 sys.path.insert(0, '/usr/share/Labber/Script') # For Labber
 import multiprocessing as mp
 from functools import partial
+from packaging import version
 
 def default_save_element_fun(save_path,output,ii):
     """ Saves the element using qutip qsave function
@@ -83,7 +84,7 @@ def default_save_data_function(save_path,sweep_arrays,derived_arrays,output_arra
         logging.warning('Error in the save_element_fun. Data cannot be saved.')
         logging.warning(e,exc_info=True)
 
-def simulation_loop_body(ii,params,dims,sweep_arrays,derived_arrays,pre_processing_in_the_loop,post_processing_in_the_loop,simulation_task):
+def _simulation_loop_body(ii,params,dims,sweep_arrays,derived_arrays,pre_processing_in_the_loop,post_processing_in_the_loop,simulation_task):
     # The master loop
     params_private = copy.deepcopy(params) # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
     current_ind = np.unravel_index(ii,dims)
@@ -120,12 +121,25 @@ def simulation_loop(params,simulation_task,sweep_arrays = {},derived_arrays = {}
     This is the main simulation loop.
 
     Parameters
-    --------
+    ----------
     params : dict
-        A dictionary containing the simulation parameters. The key is a string giving the name of the parameter
+        A dictionary containing the simulation parameters. The key is a string giving the name of the parameter.
     simulation_task : function handle
-        A function that performs the simulation. Should have form [output = simulation_task(params_private)], where output
+        A function that performs the simulation. Should have form [output = simulation_task(params)], where output
         is the result of the simulation.
+    sweep_arrays : dict, opt
+        A dictionary containing the parameters that are being swept as keys and arrays of swept parameters as values.
+    derived_arrays : dict, opt
+        A dictionary containing dictionaries of parameters that are related to parameters in sweep_arrays
+    pre_processing_before_loop : function handle, opt
+        Function to pre-process the parameter array. Takes params dictionary as an input.
+    pre_processing_in_the_loop : function handle, opt
+        Modifies the parameter array in the loop. All the parameters that are dependant on the swept parameters should be recalculated here.
+    post_processing_in_the_loop : function handle, opt
+        Function can be used to modify the output of the simulation task. Takes params as an input.
+    parallelize : bool, opt
+        Boolean indicating whether the computation should be parallelized.
+
     """
     start_time = datetime.datetime.now()
     logging.info('Simulation started at ' + str(start_time))
@@ -146,7 +160,7 @@ def simulation_loop(params,simulation_task,sweep_arrays = {},derived_arrays = {}
         pre_processing_before_loop(params)
 
 
-    simulation_loop_body_partial = partial(simulation_loop_body,params=params,dims=dims,sweep_arrays=sweep_arrays,derived_arrays=derived_arrays,pre_processing_in_the_loop=pre_processing_in_the_loop,post_processing_in_the_loop=post_processing_in_the_loop,simulation_task=simulation_task)
+    simulation_loop_body_partial = partial(_simulation_loop_body,params=params,dims=dims,sweep_arrays=sweep_arrays,derived_arrays=derived_arrays,pre_processing_in_the_loop=pre_processing_in_the_loop,post_processing_in_the_loop=post_processing_in_the_loop,simulation_task=simulation_task)
     if parallelize:
         with mp.Pool(processes=None) as p:
             output_array = p.map(simulation_loop_body_partial,range(N_tot))
@@ -202,7 +216,7 @@ def save_data(save_path,output_array,params,sweep_arrays,derived_arrays,save_ele
     save_data_function(full_save_path,sweep_arrays,derived_arrays,output_array,save_element_fun)
     return full_save_path
 
-def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_date_directory_structure = True, overwrite = False,save_path = ''):
+def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_date_directory_structure = True, overwrite = False,save_path = '',tags = [], project = None, user=None):
     """ Saves the simulation data to hdf5 file.
 
     Parameters
@@ -224,6 +238,12 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         If True, previous simulation data with the same name will be overwritten. Otherwise will append _n to the end of the filename if the file with the same name already exists.
     save_path : str
         The path to which the data should be saved. Currently it is not possible to easily set in Labber, and thus it is recommended not to use this variable.
+    tags : list of str, opt
+        List of tags to attach to the log.
+    project : str, opt
+        Name of the project.
+    user : str, opt
+        The name of the user who created the log.
 
     Returns
     -------
@@ -238,6 +258,10 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         logging.error(err,exc_info=True)
         #print('Labber script tools could not be found. Data is not saved.')
         return None
+    #print(version.parse(Labber.__version__) < version.parse('1.6.1'))
+    if version.parse(Labber.__version__) < version.parse('1.6.1'): # It is actually 1.6.2 that is required, but comparing to it returns True.
+        logging.error('Labber version at least 1.6.2 is required. Current version is ' + str(Labber.__version__) + '. Data cannot be saved.')
+        return
     dims = []
     for key,value in sweep_arrays.items():
         dims.append(len(value))
@@ -245,8 +269,16 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         dims = 1
     N_tot = np.prod(dims)
 
+    # Creating data channels. In order to be compatible with Labber, the data needs to be rearranged from
+    # output_array
+    #   . dict
+    #         data_name : data_values
+    #         .
+    #         .
+    #         .
+    #   . dict
 
-# Creating step channels
+    print(data_array)
     temp_ouput_array = {}
     data_dicts = []
     for key,value in data_array[0].items():
@@ -256,12 +288,17 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         for key,value in data_array[ii].items():
             temp_ouput_array[key][ii] = value
     data_array = temp_ouput_array
-    channels = []
+    print(data_array)
+
+# Creating step channels
+    step_channels = []
     for array_name, array_values in sweep_arrays.items():
-        channels.append(dict(name=array_name,unit='',values=array_values))
+        step_channels.append(dict(name=array_name,unit='',values=array_values))
     vector_in_the_data = False
 
+    
     first_output_element = list(data_array.values())[0][0]
+    print(data_array.values())
     if isinstance(first_output_element, tuple):
         vector_in_the_data = True
         vector_channel_name = first_output_element[0]
@@ -269,30 +306,39 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
             vector_channel_values = params[vector_channel_name]
         else:
             vector_channel_values = range(len(first_output_element[1]))
-        channels.append(dict(name=vector_channel_name,unit='',values=vector_channel_values))
+        step_channels.append(dict(name=vector_channel_name,unit='',values=vector_channel_values))
 
-    channels.reverse() # Reversing is important to make the inner and outer looping consistent.
-    
-# And then the channels for the rest of the parameters
-    log_channels = []
-    log_channels.extend(channels)
+    step_channels.reverse() # Reversing is important to make the inner and outer looping consistent.
+    log_channels = [] # XXX log_channels name is confusing, as this is going to be appended to step_channels dict.
+    #log_dict = {}
+    log_channels.extend(step_channels)
     for param_name, param_value in params.items():
         try:
             if(param_name not in sweep_arrays and param_name != vector_channel_name):
-                if not (isinstance(param_value,(float,int,str))):
-                    raise ValueError
-                channel_dict =dict(name=param_name,unit='',values=param_value,vector=False)
+                if not (isinstance(param_value,(float,int,bool))):
+                    raise ValueError # Comment this line you you figure out a way to save strings
+                    try:
+                        param_value_str = str(param_value)
+                        if len(param_value_str) > 1e5: # if the objects string format is too long, don't include it.
+                            raise ValueError
+                        param_value = param_value_str
+                    except Error: # Should be replaced with the actual errors that str() can raise.
+                        raise ValueError
+                channel_dict = dict(name=param_name,unit='',values=param_value,vector=False)
                 #print(channel_dict)
                 log_channels.append(channel_dict)
+                #log_dict[channel_dict["name"]] = channel_dict["values"]
         except ValueError:
             logging.warning('Parameter ' + param_name + ' cannot be saved.')
             #print('Parameter ' + param_name + ' cannot be saved.')
             pass
-
+        
     unique_filename = os.path.join(save_path,filename)
-    
+    max_number_of_attempts = 100
 
     if not overwrite:
+        # Get the path to which Labber tries to create the log by creating a dummy log.
+        # Not very neat!
         f_temp = Labber.createLogFile_ForData(os.path.join(save_path,'dummy_file_name'),'')
         filename_temp = f_temp.getFilePath('')
         os.remove(filename_temp)
@@ -300,22 +346,28 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         dirname = os.path.dirname(filename_temp)
         unique_filename = os.path.join(save_path,filename)
         ii=1
-        print(os.path.join(dirname,unique_filename + '.hdf5'))
-        print(os.path.isfile(os.path.join(dirname,unique_filename + '.hdf5')))
         while os.path.isfile(os.path.join(dirname,unique_filename + '.hdf5')):
-           
+           # Attempts to find a filename that is not used.
            unique_filename = os.path.join(save_path,filename + '_' + str(ii))
            print(os.path.join(dirname,unique_filename))
            ii = ii + 1
-           if ii > 100:
-               logging.warning('Could not create unique filename for ' + filename)
-               #print('Could not create unique filename for ' + filename)
+           if ii > max_number_of_attempts:
+               logging.warning('Could not create unique filename for ' + filename + '.')
                return ''
 
     logging.debug(os.path.join(save_path,unique_filename))
-    f = Labber.createLogFile_ForData(os.path.join(save_path,unique_filename),data_dicts,log_channels,use_database= not use_date_directory_structure)
+    # Finally create the real log file.
 
-    channel = channels[0]
+    f = Labber.createLogFile_ForData(os.path.join(save_path,unique_filename),data_dicts,log_channels,use_database= not use_date_directory_structure)
+    
+    if len(tags) > 0:
+        f.setTags(tags)
+    if project:
+        f.setProject(project)
+    if user:
+        f.setUser(user)
+    
+    channel = step_channels[0]
     jj = 0
     n_lowest = len(channel['values'])
     logging.debug(n_lowest)
@@ -332,9 +384,11 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
                 data_dict[key] = np.array(values[ii][1])
             else:
                 data_dict[key] = np.array(values[ii:ii+n_lowest])
+        
+        #data_dict.update(log_dict)
         f.addEntry(data_dict)
 
 
-        
-    return f.getFilePath([])
-
+    final_path = f.getFilePath([])
+    logging.info('Data is saved to ' + final_path + '.')
+    return final_path

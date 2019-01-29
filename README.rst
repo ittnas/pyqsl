@@ -6,7 +6,7 @@ The simulation data can be saved and viewed using Labber LogBrowser (http://labb
 
 Installation
 ------------
-pyqsl can be installed using pip, but is not yeat available through public repositories. To install, first clone the repository and enter the directory. There run ::
+pyqsl can be installed using pip, but is not yet available through public repositories. To install, first clone the repository and enter the directory. There run ::
 
   pip3 install -r requirements.txt .
 
@@ -17,6 +17,16 @@ Optionally, can be installed installed in a virtual environment using virtualenv
   pip3 install -r requirements.txt .
 
 To verify that the installation works there is a directory containing tests.
+
+For automated document generation the library uses Sphinx. To generate the documentation install sphinx ::
+
+  pip3 install sphinx
+
+And then navigate to doc/ directory. There you can simply run ::
+
+  make html
+
+To generate html documentation.
 
 TODO
 ----

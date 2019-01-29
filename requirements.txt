@@ -4,3 +4,4 @@ matplotlib>1.2.1
 cython>0.21
 qutip>4
 h5py
+packaging
