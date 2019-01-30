@@ -327,17 +327,21 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         step_channels.append(dict(name=new_step_channel_name,values=new_step_channel_values))
         step_channel_names.append(new_step_channel_name)
         current_element = current_element[1][0] # The first element of the next element.
-        if isinstance(current_element,dict): # Found a dict! The keys are the data channels.
-            data_channels = []
-            for data_name, data_value in current_element.items():
-                if isinstance(data_value,tuple):
-                    x_name = data_value[1][0]
-                    #x_values = data_value[1][1]
-                    data_channels.append(dict(name=data_name,x_name=x_name))
-                #else if isinstance(data_value,(list,np.ndarray)):
-                else:
-                    data_channels.append(dict(name=data_name))
-                
+
+    # Now current element should be a dict that contains the data chanels.
+    data_channels = []
+    if isinstance(current_element,dict): # Found a dict! The keys are the data channels.
+        for data_name, data_value in current_element.items():
+            if isinstance(data_value,tuple):
+                x_name = data_value[1][0]
+                #x_values = data_value[1][1]
+                data_channels.append(dict(name=data_name,x_name=x_name))
+            #else if isinstance(data_value,(list,np.ndarray)):
+            else:
+                data_channels.append(dict(name=data_name))
+    else:
+        logging.error('No data channels found in the data. Either data is incorrectly formatted or there is nothing to save')
+        return None
     step_channels.reverse() # Reversing is important to make the inner and outer looping consistent.
     #print(step_channels)
     log_channels = [] # XXX log_channels name is confusing, as this is going to be appended to step_channels dict.
@@ -432,7 +436,7 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
             f.addEntry(data_dicts)
 
     for ii in range(0,N_tot,1):
-        add_entries(data_array[0],f)
+        add_entries(data_array[ii],f)
 
     # for ii in range(0,N_tot,skip):
     #     data_dict = {channel['name'] : channel['values']}

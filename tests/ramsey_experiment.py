@@ -13,11 +13,11 @@ params = {
     "t1":1000e-9*ts
 }
 
-sweep_arrays = {"dw":np.linspace(-10e6 * 2*np.pi/ts,10e6 * 2*np.pi/ts,3)}
+sweep_arrays = {"dw":np.linspace(-10e6 * 2*np.pi/ts,10e6 * 2*np.pi/ts,201)}
 
 def pre_processing_before_loop(params,*args,**kwargs):
     #params["wd"] = params["wq"] + params["dw"]
-    params["tlist"] = np.linspace(0,params["t1"],5)
+    params["tlist"] = np.linspace(0,params["t1"],251)
     a = destroy(2)
     params["H"] = params["dw"]*a.dag()*a
     params["psi0"] = (basis(2,0) + basis(2,1)).unit() # Initial state
@@ -39,7 +39,7 @@ def qubit_simulation_example_labber(params,*args,**kwargs):
     output_temp = mesolve(params["H"], params["psi0"], params["tlist"], [], params["output_list"])
     output = {}
     for ii in range(len(params["output_list"])):
-        output['p' + str(ii)] = ("tlist",output_temp.expect[ii])
+        output['p' + str(ii)] = (output_temp.expect[ii],('tlist',params['tlist']))
     return output
 
 
