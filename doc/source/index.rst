@@ -10,6 +10,7 @@ Welcome to pyqsl's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+.. automodule:: pyqsl
 
 
 Indices and tables

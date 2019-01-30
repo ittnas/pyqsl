@@ -22,11 +22,15 @@ For automated document generation the library uses Sphinx. To generate the docum
 
   pip3 install sphinx
 
-And then navigate to doc/ directory. There you can simply run ::
+And then navigate to doc/ directory. To update the API doc strings, run ::
+
+  sphinx-apidoc -f -o source/ ../pyqsl
+
+and then build the docs with ::
 
   make html
 
-To generate html documentation.
+to generate html documentation.
 
 TODO
 ----
@@ -35,6 +39,5 @@ TODO
 Issues
 ------
 * Labber path is hardcoded in core.py. This should be changed.
-* Documentation is not generated.
   
 

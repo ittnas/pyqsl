@@ -69,6 +69,24 @@
 <dd></dd></dl>
 
 <dl class="function">
+<dt id="pyqsl.core.load_pickled_data">
+<code class="descclassname">pyqsl.core.</code><code class="descname">load_pickled_data</code><span class="sig-paren">(</span><em>load_path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#load_pickled_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.load_pickled_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads pickled data saved to load_path directory.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>load_path</strong> (<em>str</em>) – Path to the directory where the data is located.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Dictionary containing all the data and the simulation parameters. The keys are ‘data’, ‘params’, ‘sweep_arrays’ and ‘derived_arrays’, corresponding to the object files found in the load_path directory.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
 <dt id="pyqsl.core.save_data">
 <code class="descclassname">pyqsl.core.</code><code class="descname">save_data</code><span class="sig-paren">(</span><em>save_path</em>, <em>output_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>save_element_fun=&lt;function default_save_element_fun&gt;</em>, <em>save_parameters_function=&lt;function default_save_parameters_function&gt;</em>, <em>save_data_function=&lt;function default_save_data_function&gt;</em>, <em>use_date_directory_structure=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Saves the data to a directory given by save_path/data/current_date if use_date_directory_structure is True. Otherwise saves the data to save_path/.</p>
@@ -95,7 +113,7 @@ single elmenet of output array and ii is the index of the serialized element.</l
 
 <dl class="function">
 <dt id="pyqsl.core.save_data_hdf5">
-<code class="descclassname">pyqsl.core.</code><code class="descname">save_data_hdf5</code><span class="sig-paren">(</span><em>filename</em>, <em>data_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>use_date_directory_structure=True</em>, <em>overwrite=False</em>, <em>save_path=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data_hdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data_hdf5" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">pyqsl.core.</code><code class="descname">save_data_hdf5</code><span class="sig-paren">(</span><em>filename</em>, <em>data_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>use_date_directory_structure=True</em>, <em>overwrite=False</em>, <em>save_path=''</em>, <em>comment=None</em>, <em>tags=[]</em>, <em>project=None</em>, <em>user=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data_hdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data_hdf5" title="Permalink to this definition">¶</a></dt>
 <dd><p>Saves the simulation data to hdf5 file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -112,10 +130,41 @@ can be another dictionary which keys are the names of the vector variables and v
 <li><strong>use_data_directory_structure</strong> (<em>bool</em>) – Indicates whether the data should be saved in a directory structure containing the current date. Has to be True if Labber databases are to be used. Currently Labber automatically uses a main directory which can only be set from the LogBrowser program (or config file).</li>
 <li><strong>overwrite</strong> (<em>bool</em>) – If True, previous simulation data with the same name will be overwritten. Otherwise will append _n to the end of the filename if the file with the same name already exists.</li>
 <li><strong>save_path</strong> (<em>str</em>) – The path to which the data should be saved. Currently it is not possible to easily set in Labber, and thus it is recommended not to use this variable.</li>
+<li><strong>tags</strong> (<em>list of str</em><em>, </em><em>opt</em>) – List of tags to attach to the log.</li>
+<li><strong>project</strong> (<em>str</em><em>, </em><em>opt</em>) – Name of the project.</li>
+<li><strong>user</strong> (<em>str</em><em>, </em><em>opt</em>) – The name of the user who created the log.</li>
 </ul>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The full save path including the name of the file the data is saved to.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyqsl.core.save_data_pickle">
+<code class="descclassname">pyqsl.core.</code><code class="descname">save_data_pickle</code><span class="sig-paren">(</span><em>save_path</em>, <em>params=None</em>, <em>data=None</em>, <em>sweep_arrays=None</em>, <em>derived_arrays=None</em>, <em>overwrite=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data_pickle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data_pickle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the simulation data using pickle-function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>save_path</strong> (<em>str</em>) – Path to the directory where the data will be saved. If save_path is not a directory, a new directory will be created where the file extension is stripped from the save_path and the resulting string is used as a save directory.
+Example: path/to/data.hdf5 -&gt; path/to/data/</li>
+<li><strong>params</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary of the simulation parameters. If not None, will be saved to load_path/params.obj.</li>
+<li><strong>data</strong> (<em>object</em><em>, </em><em>optional</em>) – Data structure containing the simulation data. If not None, will be saved to load_path/data.obj.</li>
+<li><strong>sweep_arrays</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary containing the sweep arrays. If not None, will be saved to load_path/sweep_arrays.obj.</li>
+<li><strong>derived_arrays</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary containing the derived_arrays. If not None, will be saved to load_path/derived_arrays.obj.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Directory to which the data was saved.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
@@ -149,11 +198,6 @@ is the result of the simulation.</li>
 </tbody>
 </table>
 </dd></dl>
-
-<dl class="function">
-<dt id="pyqsl.core.simulation_loop_body">
-<code class="descclassname">pyqsl.core.</code><code class="descname">simulation_loop_body</code><span class="sig-paren">(</span><em>ii</em>, <em>params</em>, <em>dims</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>pre_processing_in_the_loop</em>, <em>post_processing_in_the_loop</em>, <em>simulation_task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#simulation_loop_body"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.simulation_loop_body" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </div>
 <div class="section" id="module-pyqsl">
