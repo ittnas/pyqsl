@@ -55,5 +55,11 @@ logging.basicConfig(level=logging.INFO)
 output_list = pyqsl.simulation_loop(params, qubit_simulation_example_labber, sweep_arrays=sweep_arrays,
                                     pre_processing_before_loop=pre_processing_before_loop, pre_processing_in_the_loop=pre_processing_in_the_loop, parallelize=True)
 
-pyqsl.save_data_hdf5("ramsey", output_list, params, sweep_arrays, [
+data_path = pyqsl.save_data_hdf5("ramsey", output_list, params, sweep_arrays, [
 ], use_date_directory_structure=False, overwrite=True)
+
+pickled_path = pyqsl.save_data_pickle(data_path, params, output_list, sweep_arrays,
+                                      [], overwrite=False)
+
+out = pyqsl.load_pickled_data(pickled_path)
+print(out)
