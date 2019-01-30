@@ -278,43 +278,74 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
     #         .
     #   . dict
 
-    print(data_array)
-    temp_ouput_array = {}
-    data_dicts = []
-    for key,value in data_array[0].items():
-        temp_ouput_array[key]=[None]*N_tot
-        data_dicts.append(dict(name=key,unit='',vector=False))
-    for ii in range(len(data_array)):
-        for key,value in data_array[ii].items():
-            temp_ouput_array[key][ii] = value
-    data_array = temp_ouput_array
-    print(data_array)
+    # temp_ouput_array = {}
+    # data_dicts = []
+    # for key,value in data_array[0].items():
+    #     temp_ouput_array[key]=[None]*N_tot
+    #     data_dicts.append(dict(name=key,unit='',vector=False))
+    # for ii in range(len(data_array)):
+    #     for key,value in data_array[ii].items():
+    #         temp_ouput_array[key][ii] = value
+    # data_array = temp_ouput_array
 
 # Creating step channels
     step_channels = []
+    step_channel_names = []
     for array_name, array_values in sweep_arrays.items():
         step_channels.append(dict(name=array_name,unit='',values=array_values))
+        step_channel_names.append(array_name)
     vector_in_the_data = False
 
     
-    first_output_element = list(data_array.values())[0][0]
-    print(data_array.values())
-    if isinstance(first_output_element, tuple):
-        vector_in_the_data = True
-        vector_channel_name = first_output_element[0]
-        if vector_channel_name in params:
-            vector_channel_values = params[vector_channel_name]
-        else:
-            vector_channel_values = range(len(first_output_element[1]))
-        step_channels.append(dict(name=vector_channel_name,unit='',values=vector_channel_values))
+    # first_output_element = list(data_array.values())[0][0]
+    # print(data_array.values())
+    # if isinstance(first_output_element, tuple):
+    #     vector_in_the_data = True
+    #     vector_channel_name = first_output_element[0]
+    #     if vector_channel_name in params:
+    #         vector_channel_values = params[vector_channel_name]
+    #     else:
+    #         vector_channel_values = range(len(first_output_element[1]))
+    #     step_channels.append(dict(name=vector_channel_name,unit='',values=vector_channel_values))
 
+
+    first_output_element = data_array[0]
+    #print("First output element.")
+    #print(first_output_element)
+    current_element = first_output_element
+    while isinstance(current_element,tuple):
+        vector_in_the_data = True # Not sure if this is needed.
+        # Found a tuple. The format should be ('name','value'), where value can be another tuple or then a dict, which keys are the log channel names and values are the data. The data can either be a scalar or a tuple (data_values,('x_axis_parameter_name',x_axis_values))
+        new_step_channel_name = current_element[0]
+        if new_step_channel_name in params: # The tuple 'name' is in the params. Look for its dimensions from there.
+            new_step_channel_values = params[new_step_channel_name]
+        else: # It's not in params. Therefore create a simple index array as the step channel values
+            new_step_channel_values = list(range(len(current_element[1]))) # This might be risky, if current_element[1] is not a list. Though it certainly should be.
+            
+        #print('New step channel values')
+        #print(new_step_channel_values)
+        step_channels.append(dict(name=new_step_channel_name,values=new_step_channel_values))
+        step_channel_names.append(new_step_channel_name)
+        current_element = current_element[1][0] # The first element of the next element.
+        if isinstance(current_element,dict): # Found a dict! The keys are the data channels.
+            data_channels = []
+            for data_name, data_value in current_element.items():
+                if isinstance(data_value,tuple):
+                    x_name = data_value[1][0]
+                    #x_values = data_value[1][1]
+                    data_channels.append(dict(name=data_name,x_name=x_name))
+                #else if isinstance(data_value,(list,np.ndarray)):
+                else:
+                    data_channels.append(dict(name=data_name))
+                
     step_channels.reverse() # Reversing is important to make the inner and outer looping consistent.
+    #print(step_channels)
     log_channels = [] # XXX log_channels name is confusing, as this is going to be appended to step_channels dict.
     #log_dict = {}
     log_channels.extend(step_channels)
     for param_name, param_value in params.items():
         try:
-            if(param_name not in sweep_arrays and param_name != vector_channel_name):
+            if(param_name not in sweep_arrays and param_name not in step_channel_names):
                 if not (isinstance(param_value,(float,int,bool))):
                     raise ValueError # Comment this line you you figure out a way to save strings
                     try:
@@ -358,7 +389,8 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
     logging.debug(os.path.join(save_path,unique_filename))
     # Finally create the real log file.
 
-    f = Labber.createLogFile_ForData(os.path.join(save_path,unique_filename),data_dicts,log_channels,use_database= not use_date_directory_structure)
+    #f = Labber.createLogFile_ForData(os.path.join(save_path,unique_filename),data_dicts,log_channels,use_database= not use_date_directory_structure)
+    f = Labber.createLogFile_ForData(os.path.join(save_path,unique_filename),data_channels,log_channels,use_database= not use_date_directory_structure)
     
     if len(tags) > 0:
         f.setTags(tags)
@@ -367,26 +399,52 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
     if user:
         f.setUser(user)
     
-    channel = step_channels[0]
-    jj = 0
-    n_lowest = len(channel['values'])
-    logging.debug(n_lowest)
-    if vector_in_the_data:
-        skip = 1
-    else:
-        skip = n_lowest
-    data_dict = {}
-    for ii in range(0,N_tot,skip):
-        data_dict = {channel['name'] : channel['values']}
-        for key, values in data_array.items():
-            #data_dict = {channel['name'] : channel['values'],key: np.array(values[ii:ii+n_lowest])}
-            if vector_in_the_data:
-                data_dict[key] = np.array(values[ii][1])
-            else:
-                data_dict[key] = np.array(values[ii:ii+n_lowest])
+    # channel = step_channels[0]
+    # jj = 0
+    # n_lowest = len(channel['values'])
+    # logging.debug(n_lowest)
+    # if vector_in_the_data:
+    #     skip = 1
+    # else:
+    #     skip = n_lowest
+    # data_dict = {}
+
+    def add_entries(element,f):
+        """
+        Recursively adds the entries to labber dict f given by element.
+        """
+        if isinstance(element,tuple):
+            for element_l2 in element[1]:
+                add_entries(element_l2,f)
+        else:
+            data_dicts = {}
+            for data_name, data_value in element.items():
+                #print(data_name, data_value)
+                if isinstance(data_value,tuple):
+                    x_values = data_value[1][1]
+                    data_dict = Labber.getTraceDict(data_value[0],x=x_values)
+                    data_dicts[data_name] = data_dict
+                else:
+                    data_dict = Labber.getTraceDict(data_value)
+                    data_dicts[data_name] = data_dict
+            #print('data_dicts')
+            #print(data_dicts)
+            f.addEntry(data_dicts)
+
+    for ii in range(0,N_tot,1):
+        add_entries(data_array[0],f)
+
+    # for ii in range(0,N_tot,skip):
+    #     data_dict = {channel['name'] : channel['values']}
+    #     for key, values in data_array.items():
+    #         #data_dict = {channel['name'] : channel['values'],key: np.array(values[ii:ii+n_lowest])}
+    #         if vector_in_the_data:
+    #             data_dict[key] = np.array(values[ii][1])
+    #         else:
+    #             data_dict[key] = np.array(values[ii:ii+n_lowest])
         
-        #data_dict.update(log_dict)
-        f.addEntry(data_dict)
+    #     #data_dict.update(log_dict)
+    #     f.addEntry(data_dict)
 
 
     final_path = f.getFilePath([])

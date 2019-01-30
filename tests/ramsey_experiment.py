@@ -37,7 +37,9 @@ def qubit_simulation_example_labber(params,*args,**kwargs):
     Work function suitable for use with Labber.
     """
     output_temp = mesolve(params["H"], params["psi0"], params["tlist"], [], params["output_list"])
-    output = {"p1":("tlist",output_temp.expect[0])}
+    output = {}
+    for ii in range(len(params["output_list"])):
+        output['p' + str(ii)] = ("tlist",output_temp.expect[ii])
     return output
 
 
