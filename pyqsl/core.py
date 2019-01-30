@@ -216,7 +216,7 @@ def save_data(save_path,output_array,params,sweep_arrays,derived_arrays,save_ele
     save_data_function(full_save_path,sweep_arrays,derived_arrays,output_array,save_element_fun)
     return full_save_path
 
-def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_date_directory_structure = True, overwrite = False,save_path = '',tags = [], project = None, user=None):
+def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_date_directory_structure = True, overwrite = False,save_path = '',comment = None, tags = [], project = None, user=None):
     """ Saves the simulation data to hdf5 file.
 
     Parameters
@@ -402,6 +402,8 @@ def save_data_hdf5(filename,data_array,params,sweep_arrays,derived_arrays, use_d
         f.setProject(project)
     if user:
         f.setUser(user)
+    if comment:
+        f.setComment(comment)
     
     # channel = step_channels[0]
     # jj = 0
