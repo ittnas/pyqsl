@@ -1,3 +1,9 @@
+"""
+Simulates Ramsey experiment.
+
+Antti Vepsalainen, 2019
+"""
+
 import numpy as np
 #from pyqsl import core
 import pyqsl.core as pyqsl
