@@ -40,35 +40,6 @@
 <div class="section" id="module-pyqsl.core">
 <span id="pyqsl-core-module"></span><h2>pyqsl.core module<a class="headerlink" href="#module-pyqsl.core" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="pyqsl.core.default_save_data_function">
-<code class="descclassname">pyqsl.core.</code><code class="descname">default_save_data_function</code><span class="sig-paren">(</span><em>save_path</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>output_array</em>, <em>save_element_function</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#default_save_data_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.default_save_data_function" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="pyqsl.core.default_save_element_fun">
-<code class="descclassname">pyqsl.core.</code><code class="descname">default_save_element_fun</code><span class="sig-paren">(</span><em>save_path</em>, <em>output</em>, <em>ii</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#default_save_element_fun"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.default_save_element_fun" title="Permalink to this definition">¶</a></dt>
-<dd><p>Saves the element using qutip qsave function</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>save_path</strong> (<em>str</em>) – The path to which the data is saved.</li>
-<li><strong>output</strong> (<em>obj</em>) – The object to save.</li>
-<li><strong>ii</strong> (<em>int</em>) – The serial index of the output element in the simulation.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pyqsl.core.default_save_parameters_function">
-<code class="descclassname">pyqsl.core.</code><code class="descname">default_save_parameters_function</code><span class="sig-paren">(</span><em>full_save_path</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#default_save_parameters_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.default_save_parameters_function" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
 <dt id="pyqsl.core.load_pickled_data">
 <code class="descclassname">pyqsl.core.</code><code class="descname">load_pickled_data</code><span class="sig-paren">(</span><em>load_path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#load_pickled_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.load_pickled_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Loads pickled data saved to load_path directory.</p>
@@ -88,8 +59,8 @@
 
 <dl class="function">
 <dt id="pyqsl.core.save_data">
-<code class="descclassname">pyqsl.core.</code><code class="descname">save_data</code><span class="sig-paren">(</span><em>save_path</em>, <em>output_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>save_element_fun=&lt;function default_save_element_fun&gt;</em>, <em>save_parameters_function=&lt;function default_save_parameters_function&gt;</em>, <em>save_data_function=&lt;function default_save_data_function&gt;</em>, <em>use_date_directory_structure=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Saves the data to a directory given by save_path/data/current_date if use_date_directory_structure is True. Otherwise saves the data to save_path/.</p>
+<code class="descclassname">pyqsl.core.</code><code class="descname">save_data</code><span class="sig-paren">(</span><em>save_path</em>, <em>output_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>save_element_fun=&lt;function _default_save_element_fun&gt;</em>, <em>save_parameters_function=&lt;function _default_save_parameters_function&gt;</em>, <em>save_data_function=&lt;function _default_save_data_function&gt;</em>, <em>use_date_directory_structure=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the data to a directory given by save_path/data/current_date if use_date_directory_structure is True. Otherwise saves the data to save_path/. DEPRACATED.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -121,10 +92,13 @@ single elmenet of output array and ii is the index of the serialized element.</l
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>filename</strong> (<em>str</em>) – The name of the log file.</li>
-<li><strong>data_array</strong> (<em>list of dicts</em><em> or </em><em>list of dicts of dicts</em>) – A list which size equal to the total number of elements in the simulation.
-Each element of the list is a dictionary with the name of the data variable as the key and
+<li><strong>data_array</strong> (<em>list of dicts</em><em> or </em><em>a nested list of tuples</em>) – <p>A list which size equal to the total number of elements in the simulation.
+The elements may either contain a dictionary (its structure is explained later), that contains the data variables or a tuple that corresponds to additional dimension in the data array. The first element of the tuple is the name of the dimension and the second element is a list that contains its data elements. If the dimension name is found in the params, its x-axis is given by the vector params[dimension_name]. Effectively, the data dimension is treated as a new element in the sweep_arrays. The list - tuple pairs can be nested arbitrarily many times.</p>
+<p>The keys of the data dictionary are the names of the data variables. The values are either scalars or tuples with the following shape: the first element is the data vector and the second element is a tuple with the first element being the name of the x-axis for the data vector and the second element is the x-axis values for the data.</p>
+<p>Each element of the list is a dictionary with the name of the data variable as the key and
 the value of the element as the value. If the simulation result contains vector data, the value of an element
-can be another dictionary which keys are the names of the vector variables and values are arrays containing the data. If the name of the vector variable is found in the params dictionary, it has to have the same number of elements as is the length of the data vector.</li>
+can be another dictionary which keys are the names of the vector variables and values are arrays containing the data. If the name of the vector variable is found in the params dictionary, it has to have the same number of elements as is the length of the data vector.</p>
+</li>
 <li><strong>sweep_arrays</strong> (<em>dict of lists</em>) – A dictionary which keys are the names of the swept parameters and the values are the arrays which are swept.</li>
 <li><strong>derived_arrays</strong> (<em>dict of dict of list</em>) – A dictionary which keys are the names of the variables from which the arrays are derived. The names have also to be keys in the sweep_arrays variable. Values of the dictionary are an other dictionary which keys are names of the derived arrays and values are arrays according to which the parameter is varied. The array has to have length equal to the corresponding parameter in the sweep_arrays.</li>
 <li><strong>use_data_directory_structure</strong> (<em>bool</em>) – Indicates whether the data should be saved in a directory structure containing the current date. Has to be True if Labber databases are to be used. Currently Labber automatically uses a main directory which can only be set from the LogBrowser program (or config file).</li>
@@ -202,6 +176,14 @@ is the result of the simulation.</li>
 </div>
 <div class="section" id="module-pyqsl">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-pyqsl" title="Permalink to this headline">¶</a></h2>
+<p>Package for running simulations and saving the results.</p>
+<div class="section" id="usage">
+<h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
+<p>The simulation task is performed in a user-defined funtion that takes a dictionary of the simulation parameters as an input and gives simulation result as an output.</p>
+<p>The power of pyqsl is to enable the user to change the values of simulation parameters in a loop. This is done in the simulation_loop function. The simulation loop takes a simulation task as a parameter and loops it over with all the different parameters defined by the user in the sweep_arrays dictionary. The keys of the dictionary are the parameters that are varied (they need to exist also in the params dictionary) and the keys are lists of parameter values.</p>
+<p>The output of the simulation loop is a list with length equal to the total number of different parameter configurations. There is also an option to perform the simulation in parallel.</p>
+<p>The output list can be further saved by the saving functions provided. Some of the saving functions require the output list elements to have a specified structure, most notably the .hdf5 saving function that uses Labber API to save the data. The save_data_pickle function on the other hand saves the data in binary format, that can be loaded using the load_pickled_data function.</p>
+</div>
 </div>
 </div>
 

@@ -30,7 +30,7 @@ and then build the docs with ::
 
   make html
 
-to generate html documentation.
+to generate the html documentation. The documentation can be found in doc/build/html.
 
 TODO
 ----

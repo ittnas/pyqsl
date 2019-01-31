@@ -17,7 +17,7 @@ import logging
 sys.path.insert(0, '/usr/share/Labber/Script')  # For Labber
 
 
-def default_save_element_fun(save_path, output, ii):
+def _default_save_element_fun(save_path, output, ii):
     """ Saves the element using qutip qsave function
 
     Parameters
@@ -32,7 +32,7 @@ def default_save_element_fun(save_path, output, ii):
     qsave(output, os.path.join(save_path, 'qobject_' + str(ii)))
 
 
-def default_save_parameters_function(full_save_path, params, sweep_arrays, derived_arrays):
+def _default_save_parameters_function(full_save_path, params, sweep_arrays, derived_arrays):
     with open(os.path.join(full_save_path, 'parameters.json'), 'w') as f:
         try:
             json.dump(params, f)
@@ -79,7 +79,7 @@ def default_save_parameters_function(full_save_path, params, sweep_arrays, deriv
             # print('-'*60)
 
 
-def default_save_data_function(save_path, sweep_arrays, derived_arrays, output_array, save_element_function):
+def _default_save_data_function(save_path, sweep_arrays, derived_arrays, output_array, save_element_function):
     try:
         for ii, output in enumerate(output_array):
             save_element_function(save_path, output, ii)
@@ -181,8 +181,8 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
     return output_array
 
 
-def save_data(save_path, output_array, params, sweep_arrays, derived_arrays, save_element_fun=default_save_element_fun, save_parameters_function=default_save_parameters_function, save_data_function=default_save_data_function, use_date_directory_structure=True):
-    """ Saves the data to a directory given by save_path/data/current_date if use_date_directory_structure is True. Otherwise saves the data to save_path/.
+def save_data(save_path, output_array, params, sweep_arrays, derived_arrays, save_element_fun=_default_save_element_fun, save_parameters_function=_default_save_parameters_function, save_data_function=_default_save_data_function, use_date_directory_structure=True):
+    """ Saves the data to a directory given by save_path/data/current_date if use_date_directory_structure is True. Otherwise saves the data to save_path/. DEPRACATED.
 
     Parameters
     ----------
@@ -236,8 +236,12 @@ def save_data_hdf5(filename, data_array, params, sweep_arrays, derived_arrays, u
     ----------
     filename : str
         The name of the log file.
-    data_array : list of dicts or list of dicts of dicts
+    data_array : list of dicts or a nested list of tuples
         A list which size equal to the total number of elements in the simulation.
+        The elements may either contain a dictionary (its structure is explained later), that contains the data variables or a tuple that corresponds to additional dimension in the data array. The first element of the tuple is the name of the dimension and the second element is a list that contains its data elements. If the dimension name is found in the params, its x-axis is given by the vector params[dimension_name]. Effectively, the data dimension is treated as a new element in the sweep_arrays. The list - tuple pairs can be nested arbitrarily many times.
+
+        The keys of the data dictionary are the names of the data variables. The values are either scalars or tuples with the following shape: the first element is the data vector and the second element is a tuple with the first element being the name of the x-axis for the data vector and the second element is the x-axis values for the data.
+
         Each element of the list is a dictionary with the name of the data variable as the key and 
         the value of the element as the value. If the simulation result contains vector data, the value of an element
         can be another dictionary which keys are the names of the vector variables and values are arrays containing the data. If the name of the vector variable is found in the params dictionary, it has to have the same number of elements as is the length of the data vector.
