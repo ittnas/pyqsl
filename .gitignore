@@ -113,3 +113,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# emacs backups
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+.\#*
