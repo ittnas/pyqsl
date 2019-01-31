@@ -15,7 +15,7 @@ w1 = 6  # QB1 freq
 a0 = 0.5  # Anharmonicity of QB0
 a1 = 0.4  # Anharmonicity of QB1
 
-g01 = 0.2  # QB 0-1 coupling
+g01 = 0.1  # QB 0-1 coupling
 wd0 = 5  # Drive 0 frequency
 wd1 = 4.6  # Drive 1 frequency
 Ad0 = 0.05  # Drive 0 strength
@@ -26,13 +26,14 @@ gamma_1 = 0.0  # QB1 relaxation rate
 nq0 = 2  # Number of QB0 levels
 nq1 = 2  # Number of QB1 levels
 
-tlist = np.linspace(0, 500, 101)  # Time instances in the simulation.
+tlist = np.linspace(0, 2000, 501)  # Time instances in the simulation.
 
-psi0 = tensor(basis(nq0, 1), basis(nq1, 0))  # The initial state.
+# The initial state.
+psi0 = tensor((basis(nq0, 1) + basis(nq0, 0)).unit(), basis(nq1, 0))
 
 # The list of output operators
 output_list = [tensor(num(nq0), identity(nq1)),
-               tensor(identity(nq0), num(nq1))]
+               tensor(identity(nq0), num(nq1)), tensor(identity(nq0), create(nq1) + destroy(nq1))]
 
 # These parameres are swept in the loop.
 sweep_arrays = {"wd0": np.linspace(5.8, 6.2, 511)}
@@ -115,8 +116,8 @@ def task(params, *args, **kwargs):
 
 
 output = pyqsl.simulation_loop(params, task, sweep_arrays=sweep_arrays,
-                               pre_processing_in_the_loop=create_hamiltonian, parallelize=False)
+                               pre_processing_in_the_loop=create_hamiltonian, parallelize=True)
 pyqsl.save_data_hdf5("cross_resonance", output, params, sweep_arrays, [
 
 
-], use_date_directory_structure=False, overwrite=True)
+], use_date_directory_structure=False, overwrite=False)
