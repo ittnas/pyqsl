@@ -6,7 +6,6 @@ import copy as copy
 import inspect
 import os
 import datetime
-from qutip import *
 import matplotlib.pyplot as plt
 import sys
 import json
@@ -14,6 +13,7 @@ import pickle
 import traceback
 import collections
 import logging
+from collections.abc import Iterable
 sys.path.insert(0, '/usr/share/Labber/Script')  # For Labber
 
 
@@ -29,7 +29,8 @@ def _default_save_element_fun(save_path, output, ii):
     ii : int
         The serial index of the output element in the simulation.
     """
-    qsave(output, os.path.join(save_path, 'qobject_' + str(ii)))
+    import qutip as qutip
+    qutip.qsave(output, os.path.join(save_path, 'qobject_' + str(ii)))
 
 
 def _default_save_parameters_function(full_save_path, params, sweep_arrays, derived_arrays):
@@ -122,7 +123,7 @@ def _simulation_loop_body(ii, params, dims, sweep_arrays, derived_arrays, pre_pr
     return output
 
 
-def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={}, pre_processing_before_loop=None, pre_processing_in_the_loop=None, post_processing_in_the_loop=None, parallelize=False):
+def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={}, pre_processing_before_loop=None, pre_processing_in_the_loop=None, post_processing_in_the_loop=None, parallelize=False, expand_data=True):
     """
     This is the main simulation loop.
 
@@ -145,6 +146,8 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
         Function can be used to modify the output of the simulation task. Takes params as an input.
     parallelize : bool, opt
         Boolean indicating whether the computation should be parallelized.
+    expand_data : bool, opt
+        Flag indicating whether the first level of variables should be expanded. WARNING, DOES NOT WORK FOR DICT OUTPUTS!
 
     """
     start_time = datetime.datetime.now()
@@ -178,7 +181,15 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
     logging.info('Simulation finished at ' + str(end_time) +
                  '. The duration of the simulation was ' + str(end_time-start_time) + '.')
     #print('Simulation finished at ' + str(end_time) + '. The duration of the simulation was ' + str(end_time-start_time) + '.')
-    return output_array
+
+    if expand_data:
+        if isinstance(output_array[0], Iterable):
+            print(output_array)
+            return list(zip(*output_array))
+        else:
+            return output_array
+    else:
+        return output_array
 
 
 def save_data(save_path, output_array, params, sweep_arrays, derived_arrays, save_element_fun=_default_save_element_fun, save_parameters_function=_default_save_parameters_function, save_data_function=_default_save_data_function, use_date_directory_structure=True):
