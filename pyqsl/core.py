@@ -113,17 +113,19 @@ def _simulation_loop_body(ii, params, dims, sweep_arrays, derived_arrays, pre_pr
         derived_arrays_index = derived_arrays_index + 1
 
     if(pre_processing_in_the_loop):
-        pre_processing_in_the_loop(params_private)
+        pre_processing_in_the_loop(params_private, **params_private)
 
         # params_private now contains all the required information to run the simulation
-    output = simulation_task(params_private)
+    output = simulation_task(params_private, **params_private)
 
     if(post_processing_in_the_loop):
-        output = post_processing_in_the_loop(output, params)
+        output = post_processing_in_the_loop(
+            output, params_private, **params_private)
     return output
 
 
-def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={}, pre_processing_before_loop=None, pre_processing_in_the_loop=None, post_processing_in_the_loop=None, parallelize=False, expand_data=True):
+def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={}, pre_processing_before_loop=None, pre_processing_in_the_loop=None,
+                    post_processing_in_the_loop=None, parallelize=False, expand_data=True):
     """
     This is the main simulation loop.
 
@@ -153,6 +155,7 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
     start_time = datetime.datetime.now()
     logging.info('Simulation started at ' + str(start_time))
     #print('Simulation started at ' + str(start_time))
+
     dims = []
     for key, value in sweep_arrays.items():
         dims.append(len(value))
@@ -166,10 +169,11 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
     output_array = [None]*N_tot
 
     if(pre_processing_before_loop):
-        pre_processing_before_loop(params)
+        pre_processing_before_loop(params, **params)
 
     simulation_loop_body_partial = partial(_simulation_loop_body, params=params, dims=dims, sweep_arrays=sweep_arrays, derived_arrays=derived_arrays,
-                                           pre_processing_in_the_loop=pre_processing_in_the_loop, post_processing_in_the_loop=post_processing_in_the_loop, simulation_task=simulation_task)
+                                           pre_processing_in_the_loop=pre_processing_in_the_loop, post_processing_in_the_loop=post_processing_in_the_loop,
+                                           simulation_task=simulation_task)
     if parallelize:
         with mp.Pool(processes=None) as p:
             output_array = p.map(simulation_loop_body_partial, range(N_tot))
@@ -183,16 +187,51 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
     #print('Simulation finished at ' + str(end_time) + '. The duration of the simulation was ' + str(end_time-start_time) + '.')
 
     if expand_data:
-        if isinstance(output_array[0], Iterable):
-            print(output_array)
-            return list(zip(*output_array))
+        if isinstance(output_array[0], dict):
+            temporary_array = {}
+            for key in output_array[0]:
+                temporary_array[key] = []
+            for ii in range(len(output_array)):
+                for key in output_array[0]:
+                    temporary_array[key].append(output_array[ii][key])
+            for key in output_array[0]:
+                new_shape = np.array(temporary_array[key]).shape[1:]
+                if isinstance(dims, int):
+                    new_dims = [dims]
+                else:
+                    new_dims = dims.copy()
+                new_dims.extend(new_shape)
+                if isinstance(dims, int) and dims == 1:  # Make sure the first dimension is equal to number of dimensions in sweep arrays. Remove singleton dimension, if sweep_arrays = {}
+                    temporary_array[key] = np.reshape(np.array(temporary_array[key]), new_dims)[0]
+                else:
+                    temporary_array[key] = np.reshape(np.array(temporary_array[key]), new_dims)
+            return temporary_array
+        elif isinstance(output_array[0], Iterable):
+            output_array = list(zip(*output_array))
+            for ii in range(len(output_array)):
+                new_shape = (np.array(output_array[ii]).shape)[1:]
+                new_dims = dims.copy()
+                new_dims.extend(new_shape)
+                output_array[ii] = np.reshape(
+                    np.array(output_array[ii]), new_dims)
+                # print(len(output_array[ii]))
+            # output_array = np.array(output_array)
+            # print(dims)
+            # np.reshape(output_array, tuple(dims.append(-1)))
+            return output_array
         else:
+            new_dims = dims.copy()
+            new_dims.append(-1)
+            # Not a great solution, adds a singleton dimension.
+            output_array = np.reshape(np.array(output_array), new_dims)
             return output_array
     else:
+        # No reshaping done. Fix this.
         return output_array
 
 
-def save_data(save_path, output_array, params, sweep_arrays, derived_arrays, save_element_fun=_default_save_element_fun, save_parameters_function=_default_save_parameters_function, save_data_function=_default_save_data_function, use_date_directory_structure=True):
+def save_data(save_path, output_array, params, sweep_arrays, derived_arrays, save_element_fun=_default_save_element_fun,
+              save_parameters_function=_default_save_parameters_function, save_data_function=_default_save_data_function, use_date_directory_structure=True):
     """ Saves the data to a directory given by save_path/data/current_date if use_date_directory_structure is True. Otherwise saves the data to save_path/. DEPRACATED.
 
     Parameters

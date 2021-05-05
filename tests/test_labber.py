@@ -54,4 +54,4 @@ l.addEntry({'time_v':dt,'freq_v':df})
 # data = {'y': np.sin(2*np.pi*5*x2)}
 # l.addEntry(data)
 
-help(Labber.getTraceDict)
+#help(Labber.getTraceDict)
