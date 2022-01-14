@@ -183,13 +183,9 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
     simulation_loop_body_partial = partial(_simulation_loop_body, params=params, dims=dims, sweep_arrays=sweep_arrays, derived_arrays=derived_arrays,
                                            pre_processing_in_the_loop=pre_processing_in_the_loop, post_processing_in_the_loop=post_processing_in_the_loop,
                                            simulation_task=task)
-    print('After partial', simulation_loop_body_partial)
     if parallelize:
         with mp.Pool(processes=None) as p:
-            print('Parallelizing')
             output_array = p.map(simulation_loop_body_partial, range(N_tot))
-            #output_array = p.map(task, range(N_tot))
-            print('After running')
     else:
         for ii in range(N_tot):
             output = simulation_loop_body_partial(ii)
