@@ -171,12 +171,25 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
     if(pre_processing_before_loop):
         pre_processing_before_loop(params, **params)
 
+    if parallelize:
+        # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter 
+        # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
+        with open(f'./tmp_simulation_task.py', 'w') as file:
+            file.write(inspect.getsource(simulation_task).replace(simulation_task.__name__, "task"))
+        from tmp_simulation_task import task
+    else:
+        task = simulation_task
+
     simulation_loop_body_partial = partial(_simulation_loop_body, params=params, dims=dims, sweep_arrays=sweep_arrays, derived_arrays=derived_arrays,
                                            pre_processing_in_the_loop=pre_processing_in_the_loop, post_processing_in_the_loop=post_processing_in_the_loop,
-                                           simulation_task=simulation_task)
+                                           simulation_task=task)
+    print('After partial', simulation_loop_body_partial)
     if parallelize:
         with mp.Pool(processes=None) as p:
+            print('Parallelizing')
             output_array = p.map(simulation_loop_body_partial, range(N_tot))
+            #output_array = p.map(task, range(N_tot))
+            print('After running')
     else:
         for ii in range(N_tot):
             output = simulation_loop_body_partial(ii)
