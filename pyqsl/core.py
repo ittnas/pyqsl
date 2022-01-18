@@ -13,6 +13,7 @@ import pickle
 import traceback
 import collections
 import logging
+import tqdm
 from collections.abc import Iterable
 sys.path.insert(0, '/usr/share/Labber/Script')  # For Labber
 
@@ -185,9 +186,9 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
                                            simulation_task=task)
     if parallelize:
         with mp.Pool(processes=None) as p:
-            output_array = p.map(simulation_loop_body_partial, range(N_tot))
+            output_array = list(tqdm.tqdm(p.imap(simulation_loop_body_partial, range(N_tot)), total = N_tot))
     else:
-        for ii in range(N_tot):
+        for ii in tqdm.tqdm(range(N_tot)):
             output = simulation_loop_body_partial(ii)
             output_array[ii] = output
     end_time = datetime.datetime.now()
@@ -236,7 +237,7 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
             return output_array
     else:
         # No reshaping done. Fix this.
-        return output_array
+        return np.reshape(np.array(output_array), dims)
 
 
 def save_data(save_path, output_array, params, sweep_arrays, derived_arrays, save_element_fun=_default_save_element_fun,
