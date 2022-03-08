@@ -126,7 +126,7 @@ def _simulation_loop_body(ii, params, dims, sweep_arrays, derived_arrays, pre_pr
 
 
 def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={}, pre_processing_before_loop=None, pre_processing_in_the_loop=None,
-                    post_processing_in_the_loop=None, parallelize=False, expand_data=True):
+                    post_processing_in_the_loop=None, parallelize=False, expand_data=True, n_cores=None):
     """
     This is the main simulation loop.
 
@@ -151,6 +151,8 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
         Boolean indicating whether the computation should be parallelized.
     expand_data : bool, opt
         Flag indicating whether the first level of variables should be expanded. WARNING, DOES NOT WORK FOR DICT OUTPUTS!
+    n_cores : int, opt
+        Number of cores to use in parallel processing. If None, all the available cores are used. For negative numbers N_max + n_cores is used. Defaults to None.
 
     """
     start_time = datetime.datetime.now()
@@ -185,8 +187,11 @@ def simulation_loop(params, simulation_task, sweep_arrays={}, derived_arrays={},
                                            pre_processing_in_the_loop=pre_processing_in_the_loop, post_processing_in_the_loop=post_processing_in_the_loop,
                                            simulation_task=task)
     if parallelize:
-        with mp.Pool(processes=None) as p:
-            output_array = list(tqdm.tqdm(p.imap(simulation_loop_body_partial, range(N_tot)), total = N_tot))
+        if n_cores < 0:
+            n_cores = os.cpu_count() + n_cores
+        os.cpu_count()
+        with mp.Pool(processes=n_cores) as p:
+            output_array = list(tqdm.tqdm(p.imap(simulation_loop_body_partial, range(N_tot)), total = N_tot, smoothing=0))
     else:
         for ii in tqdm.tqdm(range(N_tot)):
             output = simulation_loop_body_partial(ii)
