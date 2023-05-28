@@ -34,4 +34,19 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-testing = ["pytest", "tox"]
+testing = [
+"pytest",
+"tox",
+"black",
+"isort",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.pylint]
+good-names="ii,jj, i,j,k,l,m"
+max-line-length=120
