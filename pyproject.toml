@@ -23,14 +23,6 @@ dependencies = [
 "tqdm"
 ]
 
-# dependencies = [
-# numpy,
-# scipy,
-# matplotlib,
-# cython,
-# tqdm,
-# ]
-
 dynamic = ["version"]
 
 [project.optional-dependencies]
@@ -39,6 +31,10 @@ testing = [
 "tox",
 "black",
 "isort",
+]
+
+examples = [
+"qutip>4.0"
 ]
 
 [tool.isort]
