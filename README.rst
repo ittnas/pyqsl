@@ -44,7 +44,6 @@ Issues
 ```python
 if __name__=='__main__':
     result = pyqsl.core.simulation_loop(p.__dict__, simulation_task, sweep_arrays=sweep_arrays, expand_data=True, parallelize=True)
-
 ```
   
 
