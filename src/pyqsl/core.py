@@ -186,10 +186,11 @@ def run(
     for value in sweeps.values():
         dims.append(len(value))
 
-    logging.debug(dims)
     N_tot = int(np.prod(dims))
     logging.info("Sweep dimensions: " + str(dims) + ".")
     output_array = [None] * N_tot
+
+    settings = copy.copy(settings)
 
     if pre_processing_before_loop:
         pre_processing_before_loop(settings)

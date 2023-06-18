@@ -1,6 +1,7 @@
 import pytest
 import pyqsl
 import numpy as np
+from typing import Any
 
 @pytest.fixture()
 def ab_settings():
@@ -10,16 +11,24 @@ def ab_settings():
     return settings
 
 
-def simple_task(a, b):
+def simple_task(a: int, b: int) -> int:
     return a + b
 
 
-def task_that_returns_tuples(a, b):
+def more_complicated_task(a: Any, b: Any, c: Any) -> Any:
+    (a + b)*c
+
+
+def task_that_returns_tuples(a: float, b: float) -> tuple[float, float]:
     return a+b, a-b
 
 
-def task_that_returns_dicts(a, b):
+def task_that_returns_dicts(a: float, b: float) -> dict[str, float]:
     return {'sum': a+b, 'diff': a - b}
+
+
+def add_new_setting(settings: pyqsl.Settings):
+    settings.c = 5.0
 
 
 def test_run():
@@ -82,3 +91,10 @@ def test_task_that_returns_dicts(ab_settings):
     result = pyqsl.run(task_that_returns_dicts, ab_settings, sweeps=sweeps, expand_data=False)
     assert result.shape == (3, 5)
     assert result[0, 0]['sum'] == -1.0
+
+
+def test_prepocessing(ab_settings):
+    
+    pyqsl.run(more_complicated_task, ab_settings, pre_processing_before_loop=add_new_setting)
+    with pytest.raises(AttributeError):
+        ab_settings.c
