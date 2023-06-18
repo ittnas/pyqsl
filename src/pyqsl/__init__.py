@@ -12,5 +12,5 @@ The output of the simulation loop is a list with length equal to the total numbe
 The output list can be further saved by the saving functions provided. Some of the saving functions require the output list elements to have a specified structure, most notably the .hdf5 saving function that uses Labber API to save the data. The save_data_pickle function on the other hand saves the data in binary format, that can be loaded using the load_pickled_data function.
 
 """
-from .core import load_pickled_data, save_data_pickle, run
-from .settings import Settings, Setting, Relation
+from .core import load_pickled_data, run, save_data_pickle
+from .settings import Relation, Setting, Settings

@@ -8,12 +8,14 @@ import os
 import pickle
 from collections.abc import Iterable
 from functools import partial
+from typing import Any, Optional, Sequence, Union
 
 import numpy as np
 import tqdm
 from packaging import version as pkg
+
 from pyqsl.settings import Setting, Settings
-from typing import Iterable, Union, Any, Optional
+
 
 def _default_save_element_fun(save_path, output, ii):
     """Saves the element using qutip qsave function
@@ -140,13 +142,14 @@ def _simulation_loop_body(
 def run(
     task,
     settings: Settings,
-    sweeps: dict[Union[str, Setting], Iterable] = {},
+    sweeps: dict[Union[str, Setting], Sequence] = {},
     pre_processing_before_loop=None,
     pre_processing_in_the_loop=None,
     post_processing_in_the_loop=None,
     parallelize: bool = False,
     expand_data: bool = True,
     n_cores: Optional[int] = None,
+    jupyter_compability_mode: bool = False,
 ):
     """
     This is the main simulation loop.
@@ -172,6 +175,9 @@ def run(
         Flag indicating whether the first level of variables should be expanded. WARNING, DOES NOT WORK FOR DICT OUTPUTS!
     n_cores : int, opt
         Number of cores to use in parallel processing. If None, all the available cores are used. For negative numbers N_max + n_cores is used. Defaults to None.
+    jupyter_compability_mode:
+        If running in jupyter on windows, this needs to be set to True. This is due to a weird behaviour, which requires
+        the task to be saved to a file.
 
     """
     start_time = datetime.datetime.now()
@@ -181,30 +187,24 @@ def run(
         dims.append(len(value))
 
     logging.debug(dims)
-    if dims == []:
-        dims = 1
-    N_tot = np.prod(dims)
+    N_tot = int(np.prod(dims))
     logging.info("Sweep dimensions: " + str(dims) + ".")
     output_array = [None] * N_tot
 
     if pre_processing_before_loop:
         pre_processing_before_loop(settings)
 
-    if parallelize:
+    windows_and_jupyter = False
+    if parallelize and windows_and_jupyter:
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
         with open(f"./tmp_simulation_task.py", "w") as file:
-            file.write(
-                inspect.getsource(task).replace(
-                    task.__name__, "task"
-                )
-            )
-        import sys
-        from pprint import pprint
-        pprint(sys.path)
+            file.write(inspect.getsource(task).replace(task.__name__, "task"))
+        # import sys
+        # from pprint import pprint
+        # pprint(sys.path)
+        # This does not work with pytest
         from tmp_simulation_task import task
-    else:
-        task = task
 
     simulation_loop_body_partial = partial(
         _simulation_loop_body,
@@ -218,7 +218,7 @@ def run(
     if parallelize:
         if n_cores is not None:
             if n_cores < 0:
-                n_cores = os.cpu_count() + n_cores
+                n_cores = np.max([os.cpu_count() + n_cores, 1])
         with mp.Pool(processes=n_cores) as p:
             output_array = list(
                 tqdm.tqdm(
@@ -240,6 +240,9 @@ def run(
         + "."
     )
 
+    if len(dims) == 0:
+        # Singleton sweep
+        return output_array[0]
     if expand_data:
         if isinstance(output_array[0], dict):
             temporary_array = {}
@@ -255,16 +258,9 @@ def run(
                 else:
                     new_dims = dims.copy()
                 new_dims.extend(new_shape)
-                if (
-                    isinstance(dims, int) and dims == 1
-                ):  # Make sure the first dimension is equal to number of dimensions in sweep arrays. Remove singleton dimension, if sweep_arrays = {}
-                    temporary_array[key] = np.reshape(
-                        np.array(temporary_array[key]), new_dims
-                    )[0]
-                else:
-                    temporary_array[key] = np.reshape(
-                        np.array(temporary_array[key]), new_dims
-                    )
+                temporary_array[key] = np.reshape(
+                    np.array(temporary_array[key]), new_dims
+                )
             return temporary_array
         elif isinstance(output_array[0], Iterable):
             output_array = list(zip(*output_array))
@@ -278,17 +274,14 @@ def run(
                 output_array[ii] = np.reshape(np.array(output_array[ii]), new_dims)
             return output_array
         else:
-            if isinstance(dims, int):
-                new_dims = [dims]
-            else:
-                new_dims = dims.copy()
-            new_dims.append(-1)
-            # Not a great solution, adds a singleton dimension.
-            output_array = np.reshape(np.array(output_array), new_dims)
+            # Fallback to default behaviour without expanding
+            output_array = np.reshape(np.array(output_array), dims)
             return output_array
     else:
-        # No reshaping done. Fix this.
-        return np.reshape(np.array(output_array), dims)
+        try:
+            return np.reshape(np.array(output_array), dims)
+        except ValueError:
+            return np.reshape(np.array(output_array), dims + [-1])
 
 
 def save_data(
