@@ -12,7 +12,8 @@ from functools import partial
 import numpy as np
 import tqdm
 from packaging import version as pkg
-
+from pyqsl.settings import Setting, Settings
+from typing import Iterable, Union, Any, Optional
 
 def _default_save_element_fun(save_path, output, ii):
     """Saves the element using qutip qsave function
@@ -96,66 +97,62 @@ def _default_save_data_function(
 
 def _simulation_loop_body(
     ii,
-    params,
+    settings,
     dims,
-    sweep_arrays,
-    derived_arrays,
+    sweeps,
     pre_processing_in_the_loop,
     post_processing_in_the_loop,
-    simulation_task,
+    task,
 ):
     # The main loop
     # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
-    params_private = copy.deepcopy(params)
+    settings_dict = settings.to_dict()
     current_ind = np.unravel_index(ii, dims)
     sweep_array_index = 0
-    for key, value in sweep_arrays.items():
+    for key, value in sweeps.items():
         # Update all the parameters
-        params_private[key] = sweep_arrays[key][current_ind[sweep_array_index]]
+        settings_dict[key] = sweeps[key][current_ind[sweep_array_index]]
         sweep_array_index = sweep_array_index + 1
         # print(params_private)
 
-    # Update the paremeters based on the derived arrays
-    derived_arrays_index = 0
-    for key, value in derived_arrays.items():
-        for subkey, subvalue in value.items():
-            # Update all the parameters
-            params_private[subkey] = derived_arrays[key][subkey][
-                current_ind[derived_arrays_index]
-            ]
-        # print(params_private)
-        derived_arrays_index = derived_arrays_index + 1
+    # # Update the paremeters based on the derived arrays
+    # derived_arrays_index = 0
+    # for key, value in derived_arrays.items():
+    #     for subkey, subvalue in value.items():
+    #         # Update all the parameters
+    #         params_private[subkey] = derived_arrays[key][subkey][
+    #             current_ind[derived_arrays_index]
+    #         ]
+    #     # print(params_private)
+    #     derived_arrays_index = derived_arrays_index + 1
 
     if pre_processing_in_the_loop:
-        pre_processing_in_the_loop(params_private, **params_private)
+        pre_processing_in_the_loop(**settings_dict)
 
         # params_private now contains all the required information to run the simulation
-    output = simulation_task(params_private, **params_private)
+    output = task(**settings_dict)
 
     if post_processing_in_the_loop:
-        output = post_processing_in_the_loop(output, params_private, **params_private)
+        output = post_processing_in_the_loop(output, **settings_dict)
     return output
 
 
-def simulation_loop(
-    params,
-    simulation_task,
-    sweep_arrays={},
-    derived_arrays={},
+def run(
+    task,
+    settings: Settings,
+    sweeps: dict[Union[str, Setting], Iterable] = {},
     pre_processing_before_loop=None,
     pre_processing_in_the_loop=None,
     post_processing_in_the_loop=None,
-    parallelize=False,
-    expand_data=True,
-    n_cores=None,
+    parallelize: bool = False,
+    expand_data: bool = True,
+    n_cores: Optional[int] = None,
 ):
     """
     This is the main simulation loop.
 
-    Parameters
-    ----------
-    params : dict
-        A dictionary containing the simulation parameters. The key is a string giving the name of the parameter.
+    Args:
+        settings: settings for the run
     simulation_task : function handle
         A function that performs the simulation. Should have form [output = simulation_task(params)], where output
         is the result of the simulation.
@@ -179,9 +176,8 @@ def simulation_loop(
     """
     start_time = datetime.datetime.now()
     logging.info("Simulation started at " + str(start_time))
-
     dims = []
-    for key, value in sweep_arrays.items():
+    for value in sweeps.values():
         dims.append(len(value))
 
     logging.debug(dims)
@@ -192,35 +188,37 @@ def simulation_loop(
     output_array = [None] * N_tot
 
     if pre_processing_before_loop:
-        pre_processing_before_loop(params, **params)
+        pre_processing_before_loop(settings)
 
     if parallelize:
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
         with open(f"./tmp_simulation_task.py", "w") as file:
             file.write(
-                inspect.getsource(simulation_task).replace(
-                    simulation_task.__name__, "task"
+                inspect.getsource(task).replace(
+                    task.__name__, "task"
                 )
             )
+        import sys
+        from pprint import pprint
+        pprint(sys.path)
         from tmp_simulation_task import task
     else:
-        task = simulation_task
+        task = task
 
     simulation_loop_body_partial = partial(
         _simulation_loop_body,
-        params=params,
+        settings=settings,
         dims=dims,
-        sweep_arrays=sweep_arrays,
-        derived_arrays=derived_arrays,
+        sweeps=sweeps,
         pre_processing_in_the_loop=pre_processing_in_the_loop,
         post_processing_in_the_loop=post_processing_in_the_loop,
-        simulation_task=task,
+        task=task,
     )
     if parallelize:
-        if n_cores < 0:
-            n_cores = os.cpu_count() + n_cores
-        os.cpu_count()
+        if n_cores is not None:
+            if n_cores < 0:
+                n_cores = os.cpu_count() + n_cores
         with mp.Pool(processes=n_cores) as p:
             output_array = list(
                 tqdm.tqdm(
@@ -272,12 +270,18 @@ def simulation_loop(
             output_array = list(zip(*output_array))
             for ii in range(len(output_array)):
                 new_shape = (np.array(output_array[ii]).shape)[1:]
-                new_dims = dims.copy()
+                if isinstance(dims, int):
+                    new_dims = [dims]
+                else:
+                    new_dims = dims.copy()
                 new_dims.extend(new_shape)
                 output_array[ii] = np.reshape(np.array(output_array[ii]), new_dims)
             return output_array
         else:
-            new_dims = dims.copy()
+            if isinstance(dims, int):
+                new_dims = [dims]
+            else:
+                new_dims = dims.copy()
             new_dims.append(-1)
             # Not a great solution, adds a singleton dimension.
             output_array = np.reshape(np.array(output_array), new_dims)

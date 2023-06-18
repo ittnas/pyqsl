@@ -1,5 +1,5 @@
 import pyqsl
-from pyqsl import simulation_loop
+from pyqsl import run
 
 def test_run():
     pass
