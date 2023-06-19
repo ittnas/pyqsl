@@ -16,7 +16,7 @@ def simple_task(a: int, b: int) -> int:
 
 
 def more_complicated_task(a: Any, b: Any, c: Any) -> Any:
-    (a + b)*c
+    return (a + b)*c
 
 
 def task_that_returns_tuples(a: float, b: float) -> tuple[float, float]:
@@ -29,6 +29,14 @@ def task_that_returns_dicts(a: float, b: float) -> dict[str, float]:
 
 def add_new_setting(settings: pyqsl.Settings):
     settings.c = 5.0
+
+
+def adjust_settings(settings: pyqsl.Settings):
+    settings.c = 3.0
+
+
+def update_output(output, settings):
+    pass
 
 
 def test_run():
@@ -94,7 +102,23 @@ def test_task_that_returns_dicts(ab_settings):
 
 
 def test_prepocessing(ab_settings):
-    
-    pyqsl.run(more_complicated_task, ab_settings, pre_processing_before_loop=add_new_setting)
+    result = pyqsl.run(more_complicated_task, ab_settings, pre_processing_before_loop=add_new_setting)
+    # Chech that c is not added to settings
     with pytest.raises(AttributeError):
         ab_settings.c
+
+    assert result == 25
+
+
+def test_prepocessing_in_loop(ab_settings):
+    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
+              }
+    result = pyqsl.run(more_complicated_task, ab_settings, sweeps=sweeps, pre_processing_in_the_loop=adjust_settings)
+    assert (result == [9, 10.5, 12]).all()
+
+
+def test_post_processing_in_the_loop(ab_settings):
+    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
+              }
+    result = pyqsl.run(more_complicated_task, ab_settings, sweeps=sweeps, pre_processing_in_the_loop=adjust_settings)
+

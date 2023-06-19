@@ -108,12 +108,19 @@ def _simulation_loop_body(
 ):
     # The main loop
     # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
-    settings_dict = settings.to_dict()
+    settings = copy.copy(settings)
+    #settings_dict = settings.to_dict()
     current_ind = np.unravel_index(ii, dims)
     sweep_array_index = 0
     for key, value in sweeps.items():
         # Update all the parameters
-        settings_dict[key] = sweeps[key][current_ind[sweep_array_index]]
+        sweep_name: str
+        try:
+            sweep_name = key.name
+        except AttributeError:
+            sweep_name = key
+        setattr(settings, sweep_name, value[current_ind[sweep_array_index]])
+        #settings_dict[key] = sweeps[key][current_ind[sweep_array_index]]
         sweep_array_index = sweep_array_index + 1
         # print(params_private)
 
@@ -129,9 +136,10 @@ def _simulation_loop_body(
     #     derived_arrays_index = derived_arrays_index + 1
 
     if pre_processing_in_the_loop:
-        pre_processing_in_the_loop(**settings_dict)
+        pre_processing_in_the_loop(settings)
 
         # params_private now contains all the required information to run the simulation
+    settings_dict = settings.to_dict()
     output = task(**settings_dict)
 
     if post_processing_in_the_loop:
