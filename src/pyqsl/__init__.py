@@ -13,4 +13,5 @@ The output list can be further saved by the saving functions provided. Some of t
 
 """
 from .core import load_pickled_data, run, save_data_pickle
-from .settings import Relation, Setting, Settings
+from .settings import Setting, Settings
+from .relation import Relation, Equation, LookupTable

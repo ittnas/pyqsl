@@ -56,6 +56,3 @@ def test_adding_to_dict(settings):
     assert setting_dict[settings.amplitude] == [0, 1, 2]
     setting_dict['amplitude'] = [0, 1]
     assert setting_dict[settings.amplitude] == [0, 1]
-
-    
-

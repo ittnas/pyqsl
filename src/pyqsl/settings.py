@@ -7,12 +7,7 @@ Classes:
 """
 import dataclasses
 from dataclasses import dataclass
-from typing import Any, Optional
-
-
-@dataclass
-class Relation:
-    pass
+from typing import Any, Optional, Self
 
 
 @dataclass
@@ -20,7 +15,8 @@ class Setting:
     name: str
     value: Any = None
     unit: str = ""
-    relation: Optional[Relation] = None
+    relation: Optional["relation.Relation"] = None
+    use_relation: bool = False
 
     def __add__(self, o):
         return self.value + o
@@ -33,7 +29,7 @@ class Setting:
     def __eq__(self, other):
         if isinstance(other, str):
             return self.name == other
-        return self.name == other.name
+        return self.name == other.name   
 
 
 @dataclass
@@ -92,3 +88,14 @@ class Settings:
         # return name_value_dict
         return {name: setting.value for name, setting in self._fields.items()}
         # return self._fields
+
+    #def resolve_relations(self) -> Self: #  Needs python 3.11
+    def resolve_relations(self):
+        """
+        Resolves all the relations in the settings hierarchy.
+        """
+        # Build relation hierarchy
+
+        # Resolve values
+
+        # 

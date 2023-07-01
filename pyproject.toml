@@ -20,7 +20,8 @@ dependencies = [
 "scipy",
 "matplotlib",
 "cython",
-"tqdm"
+"tqdm",
+"numexpr==2.8.4"
 ]
 
 dynamic = ["version"]
