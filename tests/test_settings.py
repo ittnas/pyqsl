@@ -46,7 +46,6 @@ def test_adding_setting_with_wrong_name():
 
 def test_converting_to_dict(settings):
     settings_dict = settings.to_dict()
-    print(settings_dict.keys())
     assert settings_dict['amplitude'] == 4
 
 
@@ -56,3 +55,13 @@ def test_adding_to_dict(settings):
     assert setting_dict[settings.amplitude] == [0, 1, 2]
     setting_dict['amplitude'] = [0, 1]
     assert setting_dict[settings.amplitude] == [0, 1]
+
+
+def test_relation_property(settings):
+    assert settings.amplitude.use_relation is False
+    settings.amplitude.relation = pyqsl.Equation(equation='a+1')
+    assert settings.amplitude.use_relation is True
+
+
+def test_getitem(settings):
+    assert settings['amplitude'] == settings.amplitude

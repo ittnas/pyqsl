@@ -21,7 +21,8 @@ dependencies = [
 "matplotlib",
 "cython",
 "tqdm",
-"numexpr==2.8.4"
+"numexpr",
+"networkx",
 ]
 
 dynamic = ["version"]
