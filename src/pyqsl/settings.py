@@ -18,7 +18,9 @@ class Setting:
     unit: str = ""
     relation: Optional["relation.Relation"]
     use_relation: bool = False
-    _relation: Optional["relation.Relation"] = dataclasses.field(init=False, repr=False, default=None)
+    _relation: Optional["relation.Relation"] = dataclasses.field(
+        init=False, repr=False, default=None
+    )
     _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
 
     def __add__(self, o):
@@ -57,7 +59,13 @@ class Setting:
 
     @property
     def value(self) -> Any:
-        return self.relation.evaluated_value if (self.has_active_relation() and self.relation.evaluated_value is not None) else self._value
+        return (
+            self.relation.evaluated_value
+            if (
+                self.has_active_relation() and self.relation.evaluated_value is not None
+            )
+            else self._value
+        )
 
     @value.setter
     def value(self, value: Any):
@@ -88,7 +96,10 @@ class Settings:
             if setting.unit:
                 output = output + f" {setting.unit}"
             if setting.relation is not None:
-                output = output + f", {setting.relation} ({'on' if setting.use_relation else 'off'})"
+                output = (
+                    output
+                    + f", {setting.relation} ({'on' if setting.use_relation else 'off'})"
+                )
             if setting.has_active_relation():
                 output = output + f", value={setting._value}"
             output = output + "\n"
@@ -150,7 +161,7 @@ class Settings:
         # Build relation hierarchy
         relation_graph = self._build_relation_hierarchy()
         if not is_acyclic(relation_graph):
-            raise ValueError('Cyclic relations detected.')
+            raise ValueError("Cyclic relations detected.")
         # Resolve values
         nodes = list(nx.topological_sort(relation_graph))
         for node in nodes:
@@ -161,9 +172,13 @@ class Settings:
         #
 
     def _build_relation_hierarchy(self) -> nx.DiGraph:
-        settings_with_active_relation = [setting for setting in self if setting.has_active_relation()]
+        settings_with_active_relation = [
+            setting for setting in self if setting.has_active_relation()
+        ]
         relation_graph = nx.DiGraph()
-        relation_graph.add_nodes_from([setting.name for setting in settings_with_active_relation])
+        relation_graph.add_nodes_from(
+            [setting.name for setting in settings_with_active_relation]
+        )
         for setting in settings_with_active_relation:
             relation = setting.relation
             dependent_settings = relation.get_mapped_setting_names()

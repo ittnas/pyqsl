@@ -15,10 +15,11 @@ The output list can be further saved by the saving functions provided. Some of t
 from .core import run
 from .settings import Setting, Settings
 from .relation import Relation, Equation, LookupTable
-from .simulation_result import SimulationResult
+from .simulation_result import SimulationResult, load
 
 import logging
 from logging import NullHandler
+
 logging.getLogger(__name__).addHandler(NullHandler())
 
 
@@ -29,7 +30,12 @@ def add_stderr_logger(level: int = logging.DEBUG) -> logging.StreamHandler:
     """
     logger = logging.getLogger(__name__)
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(fmt="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s", datefmt="%d/%b/%Y %H:%M:%S",))
+    handler.setFormatter(
+        logging.Formatter(
+            fmt="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
+            datefmt="%d/%b/%Y %H:%M:%S",
+        )
+    )
     logger.addHandler(handler)
     logger.setLevel(level)
     logger.debug("Added a stderr logging handler to logger: %s", __name__)

@@ -19,13 +19,15 @@ import numexpr as ne
 import numpy as np
 import logging
 from scipy.interpolate import interpn
+
 logger = logging.getLogger(__name__)
+
 
 @dataclasses.dataclass
 class Relation(ABC):
     """
     Relation represents a mathematical relation between different setting values in the settings hierarchy.
-    
+
     The relations are represented through the attribute paremeters, which maps the parameters used in the
     relation to other setting names, or alternatively, to other relations. How the related paremeters are used
     is controlled by the evaluate-method, which is called during relation resolution. The evaluate method can be
@@ -41,8 +43,11 @@ class Relation(ABC):
             The resulting value of the relation evaluation. None implies that the relation has not been
             resolved.
     """
+
     parameters: dict[str, Union[str, "Relation"]]
-    _parameters: dict[str, Union[str, "Relation"]] = dataclasses.field(init=False, repr=False)
+    _parameters: dict[str, Union[str, "Relation"]] = dataclasses.field(
+        init=False, repr=False
+    )
     evaluated_value: Optional[Any] = None
 
     @property
@@ -77,7 +82,9 @@ class Relation(ABC):
         mapped_setting_names = set()
         for setting_or_relation in self.parameters.values():
             if isinstance(setting_or_relation, Relation):
-                mapped_setting_names.update(setting_or_relation.get_mapped_setting_names())
+                mapped_setting_names.update(
+                    setting_or_relation.get_mapped_setting_names()
+                )
             else:
                 mapped_setting_names.add(setting_or_relation)
         return mapped_setting_names
@@ -123,7 +130,8 @@ class Equation(Relation):
             The implemented equation in string format. The equation represented by the string
             has to be interpretable by numexpr. By default the equation just returns 0.
     """
-    equation: str = '0'
+
+    equation: str = "0"
 
     def __post_init__(self):
         """
@@ -190,9 +198,13 @@ class LookupTable(Relation):
 
         data_array = np.array(self.data, dtype=object)
         data_shape = data_array.shape
-        coordinate_shape = tuple([len(coordinate_values) for coordinate_values in self.coordinates.values()])
+        coordinate_shape = tuple(
+            [len(coordinate_values) for coordinate_values in self.coordinates.values()]
+        )
         if data_shape != coordinate_shape:
-            raise ValueError(f"Data shape is different from coordinate dimensions, {data_shape} != {coordinate_shape}")
+            raise ValueError(
+                f"Data shape is different from coordinate dimensions, {data_shape} != {coordinate_shape}"
+            )
 
     def evaluate(self, **parameter_values):
         """
@@ -212,6 +224,5 @@ class LookupTable(Relation):
         return output
 
     def __str__(self):
-        output = "LookupTable for " + ', '.join(self.coordinates)
+        output = "LookupTable for " + ", ".join(self.coordinates)
         return output
-

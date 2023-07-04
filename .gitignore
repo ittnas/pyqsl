@@ -122,3 +122,5 @@ dmypy.json
 *.elc
 auto-save-list
 .\#*
+*.data
+*.pickle

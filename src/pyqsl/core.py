@@ -54,14 +54,21 @@ def _simulation_loop_body(
     settings_with_relations = settings.resolve_relations()
     settings_dict = settings.to_dict()
     invalid_args = _get_invalid_args(task, settings_dict)
-    logger.debug('Removing invalid args ({str(invalid_args)}) from function.')
-    valid_settings = {key: settings_dict[key] for key in settings_dict if key not in invalid_args}
+    logger.debug("Removing invalid args ({str(invalid_args)}) from function.")
+    valid_settings = {
+        key: settings_dict[key] for key in settings_dict if key not in invalid_args
+    }
     output = task(**valid_settings)
 
     if post_processing_in_the_loop:
         output = post_processing_in_the_loop(output, **settings_dict)
 
-    output_as_dict = {'output': output, 'settings_with_relations': {key: settings_dict[key] for key in settings_with_relations}}
+    output_as_dict = {
+        "output": output,
+        "settings_with_relations": {
+            key: settings_dict[key] for key in settings_with_relations
+        },
+    }
     return output_as_dict
 
 
@@ -164,16 +171,27 @@ def run(
         + str(end_time - start_time)
         + "."
     )
-    dataset = _create_dataset(output_array, settings, sweeps, expand_data=expand_data, dims=dims)
+    dataset = _create_dataset(
+        output_array, settings, sweeps, expand_data=expand_data, dims=dims
+    )
     simulation_result = SimulationResult(dataset)
     return simulation_result
 
 
-def _create_dataset(output_array: Any, settings: Settings, sweeps: dict[Union[str, Setting], Any], expand_data, dims)->xr.Dataset:
+def _create_dataset(
+    output_array: Any,
+    settings: Settings,
+    sweeps: dict[Union[str, Setting], Any],
+    expand_data,
+    dims,
+) -> xr.Dataset:
     """
     Creates xarray dataset from simulation results.
     """
-    coords = {setting.name if isinstance(setting, Setting) else setting: data for setting, data in sweeps.items()}
+    coords = {
+        setting.name if isinstance(setting, Setting) else setting: data
+        for setting, data in sweeps.items()
+    }
     dataset: xr.Dataset
 
     data_vars: dict[str, Any] = {}
@@ -191,17 +209,17 @@ def _create_dataset(output_array: Any, settings: Settings, sweeps: dict[Union[st
         else:
             new_dims = dims.copy()
         new_dims.extend(new_shape)
-        temporary_array[key] = np.reshape(
-            np.array(temporary_array[key]), new_dims
-        )
+        temporary_array[key] = np.reshape(np.array(temporary_array[key]), new_dims)
 
     expanded_output = temporary_array
-    output_array = expanded_output['output']
-    relation_array = expanded_output['settings_with_relations']
+    output_array = expanded_output["output"]
+    relation_array = expanded_output["settings_with_relations"]
     relation_dict: dict[str, Any]
     if len(dims) == 0:
         output_array_reshaped = output_array[()]
-        relation_dict = {f'{key}_evaluated': value for key, value in relation_array[()].items()}
+        relation_dict = {
+            f"{key}_evaluated": value for key, value in relation_array[()].items()
+        }
     else:
         try:
             output_array_reshaped = np.reshape(np.array(output_array), dims)
@@ -209,17 +227,17 @@ def _create_dataset(output_array: Any, settings: Settings, sweeps: dict[Union[st
             output_array_reshaped = np.reshape(np.array(output_array), dims + [-1])
         relation_dict = {}
         for key in relation_array.flat[0]:
-            relation_dict[f'{key}_evaluated'] = []
+            relation_dict[f"{key}_evaluated"] = []
         for ii in range(relation_array.size):
-            for key_rd, key_ra in zip(relation_dict.keys(), relation_array.flat[0].keys()):
+            for key_rd, key_ra in zip(
+                relation_dict.keys(), relation_array.flat[0].keys()
+            ):
                 relation_dict[key_rd].append(relation_array.flat[ii][key_ra])
         for key in relation_dict:
             new_shape = np.array(relation_dict[key]).shape[1:]
             new_dims = dims.copy()
             new_dims.extend(new_shape)
-            relation_dict[key] = np.reshape(
-                np.array(relation_dict[key]), new_dims
-            )
+            relation_dict[key] = np.reshape(np.array(relation_dict[key]), new_dims)
 
     if expand_data:
         if isinstance(output_array.flat[0], dict):
@@ -241,28 +259,36 @@ def _create_dataset(output_array: Any, settings: Settings, sweeps: dict[Union[st
                 )
             for key in temporary_array:
                 data_vars[key] = (tuple(coords), temporary_array[key])
-            #return temporary_array
+            # return temporary_array
         elif output_array.shape != tuple(dims):
             # Iterable that has been converted to np.array
             for ii in range(len(dims)):
                 output_array_reshaped = np.moveaxis(output_array_reshaped, 0, -1)
-            extended_coords = tuple([f'index_{ii}' for ii in range(len(output_array_reshaped.shape) - len(dims))]) + tuple(coords)
-            data_vars['data'] = (extended_coords, output_array_reshaped)
+            extended_coords = tuple(
+                [
+                    f"index_{ii}"
+                    for ii in range(len(output_array_reshaped.shape) - len(dims))
+                ]
+            ) + tuple(coords)
+            data_vars["data"] = (extended_coords, output_array_reshaped)
         else:
             # Fallback to default behaviour without expanding
-            data_vars['data'] = (tuple(coords), output_array_reshaped)
+            data_vars["data"] = (tuple(coords), output_array_reshaped)
     else:
-        extended_coords = tuple(coords) + tuple([f'index_{ii}' for ii in range(len(output_array_reshaped.shape) - len(dims))])
-        data_vars['data'] = (tuple(extended_coords), output_array_reshaped)
+        extended_coords = tuple(coords) + tuple(
+            [
+                f"index_{ii}"
+                for ii in range(len(output_array_reshaped.shape) - len(dims))
+            ]
+        )
+        data_vars["data"] = (tuple(extended_coords), output_array_reshaped)
 
     for setting_name, value in relation_dict.items():
         data_vars[setting_name] = (tuple(coords), value)
 
-    #print(data_vars, coords)
+    # print(data_vars, coords)
     dataset = xr.Dataset(
-        data_vars=data_vars,
-        coords=coords,
-        attrs={'settings': settings}
+        data_vars=data_vars, coords=coords, attrs={"settings": settings}
     )
 
     return dataset
@@ -273,7 +299,7 @@ def _get_invalid_args(func, argdict):
     Get set of invalid arguments for a function.
     https://stackoverflow.com/questions/196960/can-you-list-the-keyword-arguments-a-function-receives
     """
-    args, varargs, varkw, _, kwonlyargs, _,  _ = inspect.getfullargspec(func)
+    args, varargs, varkw, _, kwonlyargs, _, _ = inspect.getfullargspec(func)
     if varkw:
         return set()  # All accepted
     return set(argdict) - set(args)
