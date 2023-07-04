@@ -13,13 +13,34 @@ Classes:
 """
 import dataclasses
 from typing import Union, Any, Optional
-from .settings import Setting, Settings
+from .settings import Setting
 from abc import ABC, abstractmethod
 import numexpr as ne
-
+import numpy as np
+import logging
+from scipy.interpolate import interpn
+logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class Relation(ABC):
+    """
+    Relation represents a mathematical relation between different setting values in the settings hierarchy.
+    
+    The relations are represented through the attribute paremeters, which maps the parameters used in the
+    relation to other setting names, or alternatively, to other relations. How the related paremeters are used
+    is controlled by the evaluate-method, which is called during relation resolution. The evaluate method can be
+    overridden and used to customize the behaviour of the relation.
+
+    Note that circular relations are not supported, i.e. a setting ```a``` cannot depend on setting ```b``` that
+    in turn depends on setting ```a``` as that would lead to infinite loop. However, the relation for setting ```a```
+    can depend on ```a```. In this case the original value of ```a``` is used for relation resolution.
+
+    Attributes:
+        paremeters: A mapping from parameter names used in the relation to setting names.
+        evaluated_value:
+            The resulting value of the relation evaluation. None implies that the relation has not been
+            resolved.
+    """
     parameters: dict[str, Union[str, "Relation"]]
     _parameters: dict[str, Union[str, "Relation"]] = dataclasses.field(init=False, repr=False)
     evaluated_value: Optional[Any] = None
@@ -42,6 +63,11 @@ class Relation(ABC):
 
     @abstractmethod
     def evaluate(self, **parameter_values) -> Any:
+        """
+        This abstract method should be overridden by deriving
+        classes. The main evaluation logic of the relation should be
+        implemented here.
+        """
         pass
 
     def get_mapped_setting_names(self) -> set[str]:
@@ -79,13 +105,36 @@ class Relation(ABC):
 
 @dataclasses.dataclass
 class Equation(Relation):
+    """
+    Implements a simple mathematical equation between
+    setting values using numexpr library.
+
+    Examples:
+
+    ```eq = Equation(equation='a + b')``` creates an equation that sums up values
+    of parameters ```a``` and ```b```. An implicit mapping of parameters ```a``` and ```b``` to
+    a settings called ```a``` and ```b``` is created.
+
+    ```eq = Equation(equation='a + b', parameters={'a': 'amplitude', 'b': 'frequency'})``` maps
+    parameters ```a``` and ```b``` to settings ```amplitude``` and ```frequency```.
+
+    Attributes:
+        equation:
+            The implemented equation in string format. The equation represented by the string
+            has to be interpretable by numexpr. By default the equation just returns 0.
+    """
     equation: str = '0'
 
     def __post_init__(self):
+        """
+        Adds missing parameters from the equation to self.parameters.
+        Assumes direct mapping between parameter names and settings.
+        """
         expr = ne.NumExpr(self.equation)
         for name in expr.input_names:
             if name not in self.parameters:
                 self._parameters[name] = name
+                logger.debug(f'Adding missing parameter "{name}".')
 
     def evaluate(self, **parameter_values):
         """
@@ -107,4 +156,62 @@ class Equation(Relation):
 
 @dataclasses.dataclass
 class LookupTable(Relation):
-    pass
+    data: Any = None
+    coordinates: dict[str, Any] = None
+    """
+    Implements a lookup table for parameter values.
+
+    Attributes:
+        data:
+        coordinates:
+
+    Examples:
+    ```LookupTable(data=[4, 0, 4], coordinates={'x': [-2, 0, 2]})```
+
+    ```LookupTable(data=[4, 0, 4], coordinates={'x': [-2, 0, 2]}, parameters={'x': 'amplitude')```
+
+    ```LookupTable(data=np.ones(3,2), coordinates={'x': [-2, 0, 2], 'y': [0, 1]}, parameters={'x': 'amplitude', 'y': 'frequency')```
+    
+    """
+
+    def __post_init__(self):
+        """
+        Adds missing parameters from the lookup coordinates to self.parameters.
+
+        Assumes direct mapping between parameter names and settings. Also checks that dimensions are consistent.
+
+        Raises:
+            ValueError if data and coordinate dimensions do not match.
+        """
+        for name in self.coordinates:
+            if name not in self.parameters:
+                self._parameters[name] = name
+                logger.debug(f'Adding missing parameter "{name}".')
+
+        data_array = np.array(self.data, dtype=object)
+        data_shape = data_array.shape
+        coordinate_shape = tuple([len(coordinate_values) for coordinate_values in self.coordinates.values()])
+        if data_shape != coordinate_shape:
+            raise ValueError(f"Data shape is different from coordinate dimensions, {data_shape} != {coordinate_shape}")
+
+    def evaluate(self, **parameter_values):
+        """
+        Evaluates the lookup table.
+        """
+        point = [parameter_values[coordinate] for coordinate in self.coordinates]
+        points = [values for values in self.coordinates.values()]
+        values = self.data
+        result = interpn(points, values, point)
+
+        try:
+            # interpn creates 0-d arrays from scalars. Try to convert back.
+            output = result.item()
+        except ValueError:
+            output = result
+
+        return output
+
+    def __str__(self):
+        output = "LookupTable for " + ', '.join(self.coordinates)
+        return output
+

@@ -43,12 +43,12 @@ def test_run():
     settings = pyqsl.Settings()
     settings.a = 3
     settings.b = 2
-    result = pyqsl.run(simple_task, settings, expand_data=False)
-    assert result == 5
-    assert isinstance(result, int)
-    result = pyqsl.run(simple_task, settings, expand_data=True)
-    assert result == 5
-    assert isinstance(result, int)
+    simulation_result = pyqsl.run(simple_task, settings, expand_data=False)
+    assert simulation_result.data == 5
+    assert np.isscalar(simulation_result.data)
+    simulation_result = pyqsl.run(simple_task, settings, expand_data=True)
+    assert simulation_result.data == 5
+    assert np.isscalar(simulation_result.data)
 
 
 def test_sweeps(ab_settings):
@@ -56,17 +56,18 @@ def test_sweeps(ab_settings):
               ab_settings.b: np.linspace(-1, 0, 5)
               }
     result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=False)
-    assert result.shape == (3, 5)
+    assert result.data.shape == (3, 5)
     result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=True)
-    assert result.shape == (3, 5)
+    assert result.data.shape == (3, 5)
 
 
 def test_parallel_execution(ab_settings):
     sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
               }
     result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=False, parallelize = True)
-    assert result.shape == (3,)
-    assert np.all(result == [3, 3.5, 4.0])
+    assert result.data.shape == (3,)
+    assert np.all(result.data == [3, 3.5, 4.0])
+
 
 def test_parallel_n_cores(ab_settings):
     sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
@@ -83,10 +84,10 @@ def test_task_that_returns_tuples(ab_settings):
               ab_settings.b: np.linspace(-1, 0, 5)
               }
     result = pyqsl.run(task_that_returns_tuples, ab_settings, sweeps=sweeps, expand_data=True)
-    assert result[0].shape == (3, 5) # First element of tuple
-    assert result[1].shape == (3, 5) # Second element of tuple
+    assert result.data[0].shape == (3, 5) # First element of tuple
+    assert result.data[1].shape == (3, 5) # Second element of tuple
     result = pyqsl.run(task_that_returns_tuples, ab_settings, sweeps=sweeps, expand_data=False)
-    assert result.shape == (3, 5, 2)
+    assert result.data.shape == (3, 5, 2)
 
 
 def test_task_that_returns_dicts(ab_settings):
@@ -94,11 +95,11 @@ def test_task_that_returns_dicts(ab_settings):
               ab_settings.b: np.linspace(-1, 0, 5)
               }
     result = pyqsl.run(task_that_returns_dicts, ab_settings, sweeps=sweeps, expand_data=True)
-    assert result['sum'].shape == (3, 5)  # First element of tuple
-    assert result['diff'].shape == (3, 5)  # Second element of tuple
+    assert result.sum.shape == (3, 5)  # First element of tuple
+    assert result.diff.shape == (3, 5)  # Second element of tuple
     result = pyqsl.run(task_that_returns_dicts, ab_settings, sweeps=sweeps, expand_data=False)
-    assert result.shape == (3, 5)
-    assert result[0, 0]['sum'] == -1.0
+    assert result.data.shape == (3, 5)
+    assert result.data[0, 0]['sum'] == -1.0
 
 
 def test_prepocessing(ab_settings):
@@ -107,14 +108,14 @@ def test_prepocessing(ab_settings):
     with pytest.raises(AttributeError):
         ab_settings.c
 
-    assert result == 25
+    assert result.data == 25
 
 
 def test_prepocessing_in_loop(ab_settings):
     sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
               }
     result = pyqsl.run(more_complicated_task, ab_settings, sweeps=sweeps, pre_processing_in_the_loop=adjust_settings)
-    assert (result == [9, 10.5, 12]).all()
+    assert (result.data == [9, 10.5, 12]).all()
 
 
 def test_post_processing_in_the_loop(ab_settings):
@@ -122,3 +123,21 @@ def test_post_processing_in_the_loop(ab_settings):
               }
     result = pyqsl.run(more_complicated_task, ab_settings, sweeps=sweeps, pre_processing_in_the_loop=adjust_settings)
 
+
+def test_simulation_with_relations(ab_settings):
+    sweeps = {ab_settings.a: np.linspace(0, 1, 3)}
+    ab_settings.b.relation = pyqsl.Equation(equation='a + 1')
+    result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps)
+    assert (result.data == [1, 2, 3]).all()
+
+
+def test_get_invalid_args():
+    args = {'a':1, 'b':2, 'c':3}
+    def task1(a, b): pass
+    def task2(a, b, **kw): return kw['c']
+    def task3(a, b, c=2): return c
+    def task4(a=1): pass
+    assert pyqsl.core._get_invalid_args(task1, args) == set('c')
+    assert pyqsl.core._get_invalid_args(task2, args) == set()
+    assert pyqsl.core._get_invalid_args(task3, args) == set()
+    assert pyqsl.core._get_invalid_args(task4, args) == {'c', 'b'}

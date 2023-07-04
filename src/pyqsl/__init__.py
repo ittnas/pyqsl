@@ -12,6 +12,28 @@ The output of the simulation loop is a list with length equal to the total numbe
 The output list can be further saved by the saving functions provided. Some of the saving functions require the output list elements to have a specified structure, most notably the .hdf5 saving function that uses Labber API to save the data. The save_data_pickle function on the other hand saves the data in binary format, that can be loaded using the load_pickled_data function.
 
 """
-from .core import load_pickled_data, run, save_data_pickle
+from .core import run
 from .settings import Setting, Settings
 from .relation import Relation, Equation, LookupTable
+from .simulation_result import SimulationResult
+
+import logging
+from logging import NullHandler
+logging.getLogger(__name__).addHandler(NullHandler())
+
+
+def add_stderr_logger(level: int = logging.DEBUG) -> logging.StreamHandler:
+    """
+    Helper for quickly adding a StreamHandler to the logger. Useful for
+    debugging. Returns the handler after adding it. Adapted from urllib3.
+    """
+    logger = logging.getLogger(__name__)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(fmt="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s", datefmt="%d/%b/%Y %H:%M:%S",))
+    logger.addHandler(handler)
+    logger.setLevel(level)
+    logger.debug("Added a stderr logging handler to logger: %s", __name__)
+    return handler
+
+
+del NullHandler

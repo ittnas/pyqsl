@@ -34,7 +34,7 @@ class Setting:
             return self.name == other
         return self.name == other.name
 
-    def has_active_relation(self)-> bool:
+    def has_active_relation(self) -> bool:
         """
         Returns True if relation is not None and use_relation is True.
         """
@@ -82,8 +82,7 @@ class Settings:
 
     def _to_string(self):
         output: str = ""
-        
-        #for field, value in fields.items():
+
         for setting in self:
             output = output + f"{setting.name}: {setting.value}"
             if setting.unit:
@@ -96,21 +95,32 @@ class Settings:
         return output
 
     def __setattr__(self, name, value):
+        """
+        Sets attribute values.
+
+        *  If name is a name of an existing setting, sets the value for that setting instead.
+        *  If name does not exist and value is not an instance of Setting, creates a new setting with the given value.
+        *  If name does not exist but value is a setting, adds that setting.
+
+        Raises:
+            ValueError if trying to add a new setting which name is different from the attribute name.
+        """
         if isinstance(value, Setting):
             if value.name != name:
                 raise ValueError(
                     f"Setting name ({value.name}) has to be equal to Settings field name ({name})."
                 )
             super().__setattr__(name, value)
-            if value.name not in self._fields:
-                self._fields[value.name]: value
+            self._fields[value.name] = value
         else:
-            if not name.startswith("_"):
+            if name.startswith("_"):
+                super().__setattr__(name, value)
+            elif name in self:
+                self[name].value = value
+            else:
                 setting = Setting(name, value)
                 self._fields[setting.name] = setting
                 super().__setattr__(name, setting)
-            else:
-                super().__setattr__(name, value)
 
     def to_dict(self) -> dict[str, Any]:
         """Name-value pair representation of the object
@@ -127,9 +137,12 @@ class Settings:
         return self._fields[key]
 
     # def resolve_relations(self) -> Self: #  Needs python 3.11
-    def resolve_relations(self):
+    def resolve_relations(self) -> list[str]:
         """
         Resolves all the relations in the settings hierarchy.
+
+        Returns:
+            List of setting names with relations to resolve.
 
         Raises:
             ValueError if cyclic relations
@@ -139,10 +152,12 @@ class Settings:
         if not is_acyclic(relation_graph):
             raise ValueError('Cyclic relations detected.')
         # Resolve values
-        for node in nx.topological_sort(relation_graph):
+        nodes = list(nx.topological_sort(relation_graph))
+        for node in nodes:
             setting = self[node]
             if setting.has_active_relation():
                 setting.relation.resolve(self)
+        return nodes
         #
 
     def _build_relation_hierarchy(self) -> nx.DiGraph:

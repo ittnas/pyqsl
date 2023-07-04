@@ -1,5 +1,7 @@
 import pyqsl
 import pytest
+import json
+import dataclasses
 
 
 def test_create_setting():
@@ -65,3 +67,16 @@ def test_relation_property(settings):
 
 def test_getitem(settings):
     assert settings['amplitude'] == settings.amplitude
+
+
+def test_saving_as_json(settings):
+    settings_dict = dataclasses.asdict(settings)
+    json_dump = json.dumps(settings_dict)
+
+
+def test_setting_value(settings):
+    assert settings.amplitude.unit == 'V'
+    settings.amplitude = 2
+    assert settings.amplitude.unit == 'V'
+    settings.phase = 1.41
+    assert settings.phase.value == 1.41

@@ -23,6 +23,7 @@ dependencies = [
 "tqdm",
 "numexpr",
 "networkx",
+"xarray",
 ]
 
 dynamic = ["version"]
