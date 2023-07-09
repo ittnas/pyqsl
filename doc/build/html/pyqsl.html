@@ -214,13 +214,15 @@ has to be interpretable by numexpr. By default the equation just returns 0.</p>
 </dd></dl>
 
 <p>Examples:
-<code class="docutils literal notranslate"><span class="pre">`LookupTable(data=[4,</span> <span class="pre">0,</span> <span class="pre">4],</span> <span class="pre">coordinates={'x':</span> <span class="pre">[-2,</span> <span class="pre">0,</span> <span class="pre">2]})`</span></code></p>
-<p><code class="docutils literal notranslate"><span class="pre">`LookupTable(data=[4,</span> <span class="pre">0,</span> <span class="pre">4],</span> <span class="pre">coordinates={'x':</span> <span class="pre">[-2,</span> <span class="pre">0,</span> <span class="pre">2]},</span> <span class="pre">parameters={'x':</span> <span class="pre">'amplitude')`</span></code></p>
+<code class="docutils literal notranslate"><span class="pre">LookupTable(data=[4,</span> <span class="pre">0,</span> <span class="pre">4],</span> <span class="pre">coordinates={'x':</span> <span class="pre">[-2,</span> <span class="pre">0,</span> <span class="pre">2]})</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">LookupTable(data=[4,</span> <span class="pre">0,</span> <span class="pre">4],</span> <span class="pre">coordinates={'x':</span> <span class="pre">[-2,</span> <span class="pre">0,</span> <span class="pre">2]},</span> <span class="pre">parameters={'x':</span> <span class="pre">'amplitude')</span></code></p>
 <dl class="simple">
-<dt><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>LookupTable(</dt><dd><p>data=np.ones(3,2), coordinates={‘x’: [-2, 0, 2], ‘y’: [0, 1]}, parameters={‘x’: ‘amplitude’, ‘y’: ‘frequency’
-)```</p>
+<dt><a href="#id1"><span class="problematic" id="id2">``</span></a></dt><dd><p>LookupTable(
+data=np.ones(3,2), coordinates={‘x’: [-2, 0, 2], ‘y’: [0, 1]}, parameters={‘x’: ‘amplitude’, ‘y’: ‘frequency’
+)</p>
 </dd>
 </dl>
+<p><a href="#id3"><span class="problematic" id="id4">``</span></a></p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="id5">
 <span class="sig-name descname"><span class="pre">coordinates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id5" title="Permalink to this definition">¶</a></dt>
@@ -382,8 +384,8 @@ the relation is evaluated, returns the evaluated value of the relation instead.<
 are the primary way of providing inputs for the simulation task.</p>
 <p>An empty <code class="docutils literal notranslate"><span class="pre">Settings</span></code> object is created as  <code class="docutils literal notranslate"><span class="pre">settings</span> <span class="pre">=</span> <span class="pre">pyqsl.Settings()</span></code>.
 In order to add a setting for a parameter, one can do either of the following:
-* <code class="docutils literal notranslate"><span class="pre">settings.a</span> <span class="pre">=</span> <span class="pre">2</span></code>
-* <a href="#id9"><span class="problematic" id="id10">``</span></a>a = Setting(‘a’, 2); settings.a = a</p>
+*  <code class="docutils literal notranslate"><span class="pre">settings.a</span> <span class="pre">=</span> <span class="pre">2</span></code>
+*  <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">Setting('a',</span> <span class="pre">2);</span> <span class="pre">settings.a</span> <span class="pre">=</span> <span class="pre">a</span></code></p>
 <p>The setting values can be accessed as <code class="docutils literal notranslate"><span class="pre">settings['a']</span></code> or <code class="docutils literal notranslate"><span class="pre">settings.a</span></code>.
 The Setting objects can contain relations, which need to be resolved before
 their values can be accessed. This can be done as <code class="docutils literal notranslate"><span class="pre">settings.resolve_relations()</span></code>.</p>
