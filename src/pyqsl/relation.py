@@ -30,8 +30,8 @@ class Relation(ABC):
     """
     Relation represents a mathematical relation between different setting values in the settings hierarchy.
 
-    The relations are represented through the attribute paremeters, which maps the parameters used in the
-    relation to other setting names, or alternatively, to other relations. How the related paremeters are used
+    The relations are represented through the attribute parameters, which maps the parameters used in the
+    relation to other setting names, or alternatively, to other relations. How the related parameters are used
     is controlled by the evaluate-method, which is called during relation resolution. The evaluate method can be
     overridden and used to customize the behaviour of the relation.
 
@@ -40,7 +40,7 @@ class Relation(ABC):
     can depend on ```a```. In this case the original value of ```a``` is used for relation resolution.
 
     Attributes:
-        paremeters: A mapping from parameter names used in the relation to setting names.
+        parameters: A mapping from parameter names used in the relation to setting names.
         evaluated_value:
             The resulting value of the relation evaluation. None implies that the relation has not been
             resolved.

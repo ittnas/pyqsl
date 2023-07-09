@@ -1,19 +1,16 @@
+<!DOCTYPE html>
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
     <title>pyqsl package &#8212; pyqsl 0.1 documentation</title>
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
    
@@ -32,160 +29,506 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="pyqsl-package">
-<h1>pyqsl package<a class="headerlink" href="#pyqsl-package" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="submodules">
-<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+  <section id="pyqsl-package">
+<h1>pyqsl package<a class="headerlink" href="#pyqsl-package" title="Permalink to this heading">¶</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="module-pyqsl.core">
+<span id="pyqsl-core-module"></span><h2>pyqsl.core module<a class="headerlink" href="#module-pyqsl.core" title="Permalink to this heading">¶</a></h2>
+<p>This module contains the core functionality of pyqsl simulation loop.</p>
+<p>pyqsl simulation is done by calling the <code class="docutils literal notranslate"><span class="pre">run</span></code> function in this module.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="pyqsl.core.run">
+<span class="sig-prename descclassname"><span class="pre">pyqsl.core.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyqsl.settings.Settings" title="pyqsl.settings.Settings"><span class="pre">Settings</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sweeps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#pyqsl.settings.Setting" title="pyqsl.settings.Setting"><span class="pre">pyqsl.settings.Setting</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pre_process_before_loop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pyqsl.settings.Settings" title="pyqsl.settings.Settings"><span class="pre">Settings</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pre_process_in_loop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pyqsl.settings.Settings" title="pyqsl.settings.Settings"><span class="pre">Settings</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">post_process_in_loop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pyqsl.settings.Settings" title="pyqsl.settings.Settings"><span class="pre">Settings</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parallelize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expand_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jupyter_compability_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyqsl.simulation_result.SimulationResult" title="pyqsl.simulation_result.SimulationResult"><span class="pre">SimulationResult</span></a></span></span><a class="reference internal" href="_modules/pyqsl/core.html#run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.core.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs the simulation for a given task.</p>
+<p>The task function defines the workload for the simulation, which is run for each combination of the
+function input arguments defined in sweeps.
+The other input arguments for the function can be provided using the settings keyword argument.</p>
+<p>For example, if the task function has input arguments <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>, the values <code class="docutils literal notranslate"><span class="pre">settings.a</span></code> and
+<code class="docutils literal notranslate"><span class="pre">settings.b</span></code> will be used to fetch their values.
+Sweeping the value of input argument <code class="docutils literal notranslate"><span class="pre">a</span></code> for example from 0 to 2 can be accomplished by defining a
+sweep in <code class="docutils literal notranslate"><span class="pre">sweeps</span> <span class="pre">=</span> <span class="pre">{'a':</span> <span class="pre">[0,</span> <span class="pre">1,</span> <span class="pre">2]}</span></code>. The values of different settings can also depend on each other
+through relations, see documentation for <code class="docutils literal notranslate"><span class="pre">Settings</span></code> for additional details.</p>
+<p>The settings can be dynamically modified using callbacks which will be applied at several different
+stages of the evaluation process. The callback <code class="docutils literal notranslate"><span class="pre">pre_process_before_loop</span></code> will be called before looping
+over different sweeps, and should take settings object as an input and make necessary modifications.
+<code class="docutils literal notranslate"><span class="pre">pre_process_in_loop</span></code> will be applied separatately inside the simulation loop. The final callback,
+<code class="docutils literal notranslate"><span class="pre">pos_process_in_loop`</span></code> will be applied after the simulation is finished, and takes the output of the
+task and the settings as input.</p>
+<p>The results of the simulation are returned in <code class="docutils literal notranslate"><span class="pre">SimulationResult</span></code> object. The structure of the object
+depends on the task function’s return type and the value of <code class="docutils literal notranslate"><span class="pre">expand_data</span></code>. If <code class="docutils literal notranslate"><span class="pre">expand_data</span></code> is
+False all the data will be stored under <code class="docutils literal notranslate"><span class="pre">result.data</span></code>. Otherwise, the type of the task output
+determines how the data is stored.</p>
+<ul class="simple">
+<li><p>If task function returns a dict, the values corresponding to the keys can be accessed as attributes
+of <code class="docutils literal notranslate"><span class="pre">result</span></code>.</p></li>
+<li><p>If task returns a list or tuple, the data can can be accessed as <code class="docutils literal notranslate"><span class="pre">result.data[i]</span></code>, where <code class="docutils literal notranslate"><span class="pre">i</span></code> refer
+to indices in the list or tuple.</p></li>
+<li><p>If task returns a single number, the data can be accessed as <code class="docutils literal notranslate"><span class="pre">result.data</span></code>.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> – A reference to the function used for simulation. The function can accept any number of inputs
+and should return either a tuple, a single number or a dictionary.</p></li>
+<li><p><strong>settings</strong> – settings for the run</p></li>
+<li><p><strong>sweeps</strong> – A dictionary containing the parameters that are being swept as keys and arrays of swept
+parameters as values.</p></li>
+<li><p><strong>pre_process_before_loop</strong> – Function to pre-process the parameter array.</p></li>
+<li><p><strong>pre_process_in_loop</strong> – Modifies the parameter array in the loop. All the parameters that are dependant on the
+swept parameters should be recalculated here.</p></li>
+<li><p><strong>post_process_in_loop</strong> – Function can be used to modify the output of the simulation task.</p></li>
+<li><p><strong>parallelize</strong> – Boolean indicating whether the computation should be parallelized.</p></li>
+<li><p><strong>expand_data</strong> – Flag indicating whether the first level of variables should be expanded.</p></li>
+<li><p><strong>n_cores</strong> – Number of cores to use in parallel processing. If None, all the available cores are used (<code class="docutils literal notranslate"><span class="pre">N_max</span></code>).
+For negative numbers, <code class="docutils literal notranslate"><span class="pre">N_max</span> <span class="pre">+</span> <span class="pre">n_cores</span></code> is used.</p></li>
+<li><p><strong>jupyter_compability_mode</strong> – If running in jupyter on windows, this needs to be set to True. This is due to a weird behaviour in
+multiprocessing, which requires the task to be saved to a file. When using this mode, the task
+function needs to be written in a very specific way. For example, all the imports needed
+by the function need to be done within the function definition.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>SimulationResult object, that contains the resulting data and a copy of the settings.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyqsl</span>
+
+<span class="k">def</span> <span class="nf">simulation_task</span><span class="p">(</span><span class="n">a</span><span class="p">:</span><span class="nb">int</span> <span class="p">,</span> <span class="n">b</span><span class="p">:</span><span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="n">settings</span> <span class="o">=</span> <span class="n">pyqsl</span><span class="o">.</span><span class="n">Settings</span><span class="p">()</span>
+<span class="n">settings</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">settings</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">pyqsl</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">simulation_task</span><span class="p">,</span> <span class="n">settings</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
 </div>
-<div class="section" id="module-pyqsl.core">
-<span id="pyqsl-core-module"></span><h2>pyqsl.core module<a class="headerlink" href="#module-pyqsl.core" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="pyqsl.core.load_pickled_data">
-<code class="descclassname">pyqsl.core.</code><code class="descname">load_pickled_data</code><span class="sig-paren">(</span><em>load_path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#load_pickled_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.load_pickled_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Loads pickled data saved to load_path directory.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>load_path</strong> (<em>str</em>) – Path to the directory where the data is located.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Dictionary containing all the data and the simulation parameters. The keys are ‘data’, ‘params’, ‘sweep_arrays’ and ‘derived_arrays’, corresponding to the object files found in the load_path directory.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pyqsl.core.save_data">
-<code class="descclassname">pyqsl.core.</code><code class="descname">save_data</code><span class="sig-paren">(</span><em>save_path</em>, <em>output_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>save_element_fun=&lt;function _default_save_element_fun&gt;</em>, <em>save_parameters_function=&lt;function _default_save_parameters_function&gt;</em>, <em>save_data_function=&lt;function _default_save_data_function&gt;</em>, <em>use_date_directory_structure=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Saves the data to a directory given by save_path/data/current_date if use_date_directory_structure is True. Otherwise saves the data to save_path/. DEPRACATED.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>save_path</strong> (<em>str</em>) – Full path to which data is saved.</li>
-<li><strong>ouput_array</strong> (<em>array_like</em>) – An array containing the output of the simulation. Should have dimensions n1*n2*n3…ni*nbr_outputs, where i is the number of dimensions in the simulation and nbr_outputs is the number of elements in the output.</li>
-<li><strong>params</strong> (<em>dict</em>) – A dictionary containing the simulation parameters.</li>
-<li><strong>sweep_arrays</strong> (<em>dict</em>) – A dictionary containing the parameters that are being swept as keys and arrays of swept parameters as values.</li>
-<li><strong>derived_arrays</strong> (<em>dict</em>) – A dictionary containing dictionaries of parameters that are related to parameters in sweep_arrays</li>
-<li><strong>save_element_fun</strong> (<em>function handle</em><em>, </em><em>optional</em>) – A function containing instructions for saving a single element in the output_array. Needs to have format save_element_fun(save_path,output,ii), where save_path is the path to which data is saved, output is a
-single elmenet of output array and ii is the index of the serialized element.</li>
-<li><strong>save_parameters_fun</strong> (<em>function handle</em><em>, </em><em>optional</em>) – A function used to save the parameters dictionary. Has the format save_parameters_fun(full_save_path,params,sweep_arrays,derived_arrays)</li>
-<li><strong>use_date_directory_structure</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, add date structure to save_path, otherwise save directly to save_path.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pyqsl.core.save_data_hdf5">
-<code class="descclassname">pyqsl.core.</code><code class="descname">save_data_hdf5</code><span class="sig-paren">(</span><em>filename</em>, <em>data_array</em>, <em>params</em>, <em>sweep_arrays</em>, <em>derived_arrays</em>, <em>use_date_directory_structure=True</em>, <em>overwrite=False</em>, <em>save_path=''</em>, <em>comment=None</em>, <em>tags=[]</em>, <em>project=None</em>, <em>user=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data_hdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data_hdf5" title="Permalink to this definition">¶</a></dt>
-<dd><p>Saves the simulation data to hdf5 file.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>filename</strong> (<em>str</em>) – The name of the log file.</li>
-<li><strong>data_array</strong> (<em>list of dicts</em><em> or </em><em>a nested list of tuples</em>) – <p>A list which size equal to the total number of elements in the simulation.
-The elements may either contain a dictionary (its structure is explained later), that contains the data variables or a tuple that corresponds to additional dimension in the data array. The first element of the tuple is the name of the dimension and the second element is a list that contains its data elements. If the dimension name is found in the params, its x-axis is given by the vector params[dimension_name]. Effectively, the data dimension is treated as a new element in the sweep_arrays. The list - tuple pairs can be nested arbitrarily many times.</p>
-<p>The keys of the data dictionary are the names of the data variables. The values are either scalars or tuples with the following shape: the first element is the data vector and the second element is a tuple with the first element being the name of the x-axis for the data vector and the second element is the x-axis values for the data.</p>
-<p>Each element of the list is a dictionary with the name of the data variable as the key and
-the value of the element as the value. If the simulation result contains vector data, the value of an element
-can be another dictionary which keys are the names of the vector variables and values are arrays containing the data. If the name of the vector variable is found in the params dictionary, it has to have the same number of elements as is the length of the data vector.</p>
-</li>
-<li><strong>sweep_arrays</strong> (<em>dict of lists</em>) – A dictionary which keys are the names of the swept parameters and the values are the arrays which are swept.</li>
-<li><strong>derived_arrays</strong> (<em>dict of dict of list</em>) – A dictionary which keys are the names of the variables from which the arrays are derived. The names have also to be keys in the sweep_arrays variable. Values of the dictionary are an other dictionary which keys are names of the derived arrays and values are arrays according to which the parameter is varied. The array has to have length equal to the corresponding parameter in the sweep_arrays.</li>
-<li><strong>use_data_directory_structure</strong> (<em>bool</em>) – Indicates whether the data should be saved in a directory structure containing the current date. Has to be True if Labber databases are to be used. Currently Labber automatically uses a main directory which can only be set from the LogBrowser program (or config file).</li>
-<li><strong>overwrite</strong> (<em>bool</em>) – If True, previous simulation data with the same name will be overwritten. Otherwise will append _n to the end of the filename if the file with the same name already exists.</li>
-<li><strong>save_path</strong> (<em>str</em>) – The path to which the data should be saved. Currently it is not possible to easily set in Labber, and thus it is recommended not to use this variable.</li>
-<li><strong>tags</strong> (<em>list of str</em><em>, </em><em>opt</em>) – List of tags to attach to the log.</li>
-<li><strong>project</strong> (<em>str</em><em>, </em><em>opt</em>) – Name of the project.</li>
-<li><strong>user</strong> (<em>str</em><em>, </em><em>opt</em>) – The name of the user who created the log.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The full save path including the name of the file the data is saved to.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pyqsl.core.save_data_pickle">
-<code class="descclassname">pyqsl.core.</code><code class="descname">save_data_pickle</code><span class="sig-paren">(</span><em>save_path</em>, <em>params=None</em>, <em>data=None</em>, <em>sweep_arrays=None</em>, <em>derived_arrays=None</em>, <em>overwrite=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#save_data_pickle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.save_data_pickle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Saves the simulation data using pickle-function.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>save_path</strong> (<em>str</em>) – Path to the directory where the data will be saved. If save_path is not a directory, a new directory will be created where the file extension is stripped from the save_path and the resulting string is used as a save directory.
-Example: path/to/data.hdf5 -&gt; path/to/data/</li>
-<li><strong>params</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary of the simulation parameters. If not None, will be saved to load_path/params.obj.</li>
-<li><strong>data</strong> (<em>object</em><em>, </em><em>optional</em>) – Data structure containing the simulation data. If not None, will be saved to load_path/data.obj.</li>
-<li><strong>sweep_arrays</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary containing the sweep arrays. If not None, will be saved to load_path/sweep_arrays.obj.</li>
-<li><strong>derived_arrays</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary containing the derived_arrays. If not None, will be saved to load_path/derived_arrays.obj.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Directory to which the data was saved.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pyqsl.core.simulation_loop">
-<code class="descclassname">pyqsl.core.</code><code class="descname">simulation_loop</code><span class="sig-paren">(</span><em>params</em>, <em>simulation_task</em>, <em>sweep_arrays={}</em>, <em>derived_arrays={}</em>, <em>pre_processing_before_loop=None</em>, <em>pre_processing_in_the_loop=None</em>, <em>post_processing_in_the_loop=None</em>, <em>parallelize=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/core.html#simulation_loop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyqsl.core.simulation_loop" title="Permalink to this definition">¶</a></dt>
-<dd><p>This is the main simulation loop.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>params</strong> (<em>dict</em>) – A dictionary containing the simulation parameters. The key is a string giving the name of the parameter.</li>
-<li><strong>simulation_task</strong> (<em>function handle</em>) – A function that performs the simulation. Should have form [output = simulation_task(params)], where output
-is the result of the simulation.</li>
-<li><strong>sweep_arrays</strong> (<em>dict</em><em>, </em><em>opt</em>) – A dictionary containing the parameters that are being swept as keys and arrays of swept parameters as values.</li>
-<li><strong>derived_arrays</strong> (<em>dict</em><em>, </em><em>opt</em>) – A dictionary containing dictionaries of parameters that are related to parameters in sweep_arrays</li>
-<li><strong>pre_processing_before_loop</strong> (<em>function handle</em><em>, </em><em>opt</em>) – Function to pre-process the parameter array. Takes params dictionary as an input.</li>
-<li><strong>pre_processing_in_the_loop</strong> (<em>function handle</em><em>, </em><em>opt</em>) – Modifies the parameter array in the loop. All the parameters that are dependant on the swept parameters should be recalculated here.</li>
-<li><strong>post_processing_in_the_loop</strong> (<em>function handle</em><em>, </em><em>opt</em>) – Function can be used to modify the output of the simulation task. Takes params as an input.</li>
-<li><strong>parallelize</strong> (<em>bool</em><em>, </em><em>opt</em>) – Boolean indicating whether the computation should be parallelized.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="mi">3</span>
+</pre></div>
 </div>
-<div class="section" id="module-pyqsl">
-<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-pyqsl" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyqsl</span>
+
+<span class="k">def</span> <span class="nf">simulation_task</span><span class="p">(</span><span class="n">a</span><span class="p">:</span><span class="nb">int</span> <span class="p">,</span> <span class="n">b</span><span class="p">:</span><span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;c&#39;</span><span class="p">:</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">}</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">pyqsl</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">simulation_task</span><span class="p">,</span> <span class="n">settings</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">c</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="mi">3</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyqsl</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="k">def</span> <span class="nf">simulation_task</span><span class="p">(</span><span class="n">a</span><span class="p">:</span><span class="nb">int</span> <span class="p">,</span> <span class="n">b</span><span class="p">:</span><span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;c&#39;</span><span class="p">:</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">}</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">pyqsl</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">simulation_task</span><span class="p">,</span> <span class="n">settings</span><span class="p">,</span> <span class="n">sweeps</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">101</span><span class="p">)})</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="mi">101</span><span class="p">,</span> <span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="module-pyqsl.relation">
+<span id="pyqsl-relation-module"></span><h2>pyqsl.relation module<a class="headerlink" href="#module-pyqsl.relation" title="Permalink to this heading">¶</a></h2>
+<p>Classes for relations between settings.</p>
+<p>Relations can be used to define a mathematical relation between two or more settings.
+The relations for parameters that are not swept are resolved before the simulation loop.
+The settings with relations that are part of the sweeps dependency tree will be resolved within
+the sweep.</p>
+<dl class="simple">
+<dt>Classes:</dt><dd><p>Relation
+Equation
+LookupTable</p>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="pyqsl.relation.Equation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyqsl.relation.</span></span><span class="sig-name descname"><span class="pre">Equation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typing.Union[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pyqsl.relation.Relation]]</span> <span class="pre">=</span> <span class="pre">&lt;property</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluated_value:</span> <span class="pre">~typing.Any</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">equation:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'0'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/relation.html#Equation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.relation.Equation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pyqsl.relation.Relation" title="pyqsl.relation.Relation"><code class="xref py py-class docutils literal notranslate"><span class="pre">Relation</span></code></a></p>
+<p>Implements a simple mathematical equation between
+setting values using numexpr library.</p>
+<p>Examples:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`eq</span> <span class="pre">=</span> <span class="pre">Equation(equation='a</span> <span class="pre">+</span> <span class="pre">b')`</span></code> creates an equation that sums up values
+of parameters <code class="docutils literal notranslate"><span class="pre">`a`</span></code> and <code class="docutils literal notranslate"><span class="pre">`b`</span></code>. An implicit mapping of parameters <code class="docutils literal notranslate"><span class="pre">`a`</span></code> and <code class="docutils literal notranslate"><span class="pre">`b`</span></code> to
+a settings called <code class="docutils literal notranslate"><span class="pre">`a`</span></code> and <code class="docutils literal notranslate"><span class="pre">`b`</span></code> is created.</p>
+<p><code class="docutils literal notranslate"><span class="pre">`eq</span> <span class="pre">=</span> <span class="pre">Equation(equation='a</span> <span class="pre">+</span> <span class="pre">b',</span> <span class="pre">parameters={'a':</span> <span class="pre">'amplitude',</span> <span class="pre">'b':</span> <span class="pre">'frequency'})`</span></code> maps
+parameters <code class="docutils literal notranslate"><span class="pre">`a`</span></code> and <code class="docutils literal notranslate"><span class="pre">`b`</span></code> to settings <code class="docutils literal notranslate"><span class="pre">`amplitude`</span></code> and <code class="docutils literal notranslate"><span class="pre">`frequency`</span></code>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.relation.Equation.equation">
+<span class="sig-name descname"><span class="pre">equation</span></span><a class="headerlink" href="#pyqsl.relation.Equation.equation" title="Permalink to this definition">¶</a></dt>
+<dd><p>The implemented equation in string format. The equation represented by the string
+has to be interpretable by numexpr. By default the equation just returns 0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">equation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'0'</span></em><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.relation.Equation.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">parameter_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/relation.html#Equation.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.relation.Equation.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluates the equation using numexpr evaluation logic.</p>
+<p>Known issue: numexpr does not support string arguments.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyqsl.relation.LookupTable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyqsl.relation.</span></span><span class="sig-name descname"><span class="pre">LookupTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typing.Union[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pyqsl.relation.Relation]]</span> <span class="pre">=</span> <span class="pre">&lt;property</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluated_value:</span> <span class="pre">~typing.Any</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data:</span> <span class="pre">~typing.Any</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typing.Any]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/relation.html#LookupTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.relation.LookupTable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pyqsl.relation.Relation" title="pyqsl.relation.Relation"><code class="xref py py-class docutils literal notranslate"><span class="pre">Relation</span></code></a></p>
+<p>Implements a lookup table for parameter values.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.relation.LookupTable.data">
+<span class="sig-name descname"><span class="pre">data</span></span><a class="headerlink" href="#pyqsl.relation.LookupTable.data" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.relation.LookupTable.coordinates">
+<span class="sig-name descname"><span class="pre">coordinates</span></span><a class="headerlink" href="#pyqsl.relation.LookupTable.coordinates" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, <em>Any</em>] | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Examples:
+<code class="docutils literal notranslate"><span class="pre">`LookupTable(data=[4,</span> <span class="pre">0,</span> <span class="pre">4],</span> <span class="pre">coordinates={'x':</span> <span class="pre">[-2,</span> <span class="pre">0,</span> <span class="pre">2]})`</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">`LookupTable(data=[4,</span> <span class="pre">0,</span> <span class="pre">4],</span> <span class="pre">coordinates={'x':</span> <span class="pre">[-2,</span> <span class="pre">0,</span> <span class="pre">2]},</span> <span class="pre">parameters={'x':</span> <span class="pre">'amplitude')`</span></code></p>
+<dl class="simple">
+<dt><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>LookupTable(</dt><dd><p>data=np.ones(3,2), coordinates={‘x’: [-2, 0, 2], ‘y’: [0, 1]}, parameters={‘x’: ‘amplitude’, ‘y’: ‘frequency’
+)```</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">coordinates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id5" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id6" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.relation.LookupTable.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">parameter_values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/relation.html#LookupTable.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.relation.LookupTable.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluates the lookup table.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyqsl.relation.Relation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyqsl.relation.</span></span><span class="sig-name descname"><span class="pre">Relation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameters:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typing.Union[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pyqsl.relation.Relation]]</span> <span class="pre">=</span> <span class="pre">&lt;property</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluated_value:</span> <span class="pre">~typing.Any</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/relation.html#Relation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.relation.Relation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Relation represents a mathematical relation between different setting values in the settings hierarchy.</p>
+<p>The relations are represented through the attribute parameters, which maps the parameters used in the
+relation to other setting names, or alternatively, to other relations. How the related parameters are used
+is controlled by the evaluate-method, which is called during relation resolution. The evaluate method can be
+overridden and used to customize the behaviour of the relation.</p>
+<p>Note that circular relations are not supported, i.e. a setting <code class="docutils literal notranslate"><span class="pre">`a`</span></code> cannot depend on setting <code class="docutils literal notranslate"><span class="pre">`b`</span></code> that
+in turn depends on setting <code class="docutils literal notranslate"><span class="pre">`a`</span></code> as that would lead to infinite loop. However, the relation for setting <code class="docutils literal notranslate"><span class="pre">`a`</span></code>
+can depend on <code class="docutils literal notranslate"><span class="pre">`a`</span></code>. In this case the original value of <code class="docutils literal notranslate"><span class="pre">`a`</span></code> is used for relation resolution.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.relation.Relation.parameters">
+<span class="sig-name descname"><span class="pre">parameters</span></span><a class="headerlink" href="#pyqsl.relation.Relation.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>A mapping from parameter names used in the relation to setting names.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, <em>Union</em>[str, <a class="reference internal" href="#pyqsl.relation.Relation" title="pyqsl.relation.Relation">pyqsl.relation.Relation</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.relation.Relation.evaluated_value">
+<span class="sig-name descname"><span class="pre">evaluated_value</span></span><a class="headerlink" href="#pyqsl.relation.Relation.evaluated_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>The resulting value of the relation evaluation. None implies that the relation has not been
+resolved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.relation.Relation.evaluate">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">parameter_values</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="_modules/pyqsl/relation.html#Relation.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.relation.Relation.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>This abstract method should be overridden by deriving
+classes. The main evaluation logic of the relation should be
+implemented here.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">evaluated_value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id7" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.relation.Relation.get_mapped_setting_names">
+<span class="sig-name descname"><span class="pre">get_mapped_setting_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">set</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/pyqsl/relation.html#Relation.get_mapped_setting_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.relation.Relation.get_mapped_setting_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iteratively fetches mapped settings for nested Relations.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id8">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parameters</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#pyqsl.relation.Relation" title="pyqsl.relation.Relation"><span class="pre">pyqsl.relation.Relation</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id8" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the parameter mapping for the relation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.relation.Relation.resolve">
+<span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/relation.html#Relation.resolve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.relation.Relation.resolve" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function contains the relation resolution logic.</p>
+<p>Fetches the parameter values from settings, assuming that the relations for
+all the dependent parameters have been resolved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>settings</strong> – settings hierarchy that is used for looking up parameter values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-pyqsl.settings">
+<span id="pyqsl-settings-module"></span><h2>pyqsl.settings module<a class="headerlink" href="#module-pyqsl.settings" title="Permalink to this heading">¶</a></h2>
+<p>Create a settings object for pyqsl.</p>
+<p>Classes:</p>
+<blockquote>
+<div><p>Setting
+Settings</p>
+</div></blockquote>
+<dl class="py class">
+<dt class="sig sig-object py" id="pyqsl.settings.Setting">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyqsl.settings.</span></span><span class="sig-name descname"><span class="pre">Setting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value:</span> <span class="pre">~typing.Any</span> <span class="pre">=</span> <span class="pre">&lt;property</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relation:</span> <span class="pre">~pyqsl.relation.Relation</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;property</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_relation:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/settings.html#Setting"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.settings.Setting" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Describes a setting for the simulation.</p>
+<p>A settings are used as an input arguments for simulation task functions. They
+are basically name-value pairs, where name should correspond to the name of the
+input argument. Additinoanally, settings can contain meta-information, such as
+unit for the quantity.</p>
+<p>Some settings are not free parameters, but related to each other. This can be
+described by asigning a relation to the setting. If relation is is activated
+through setting use_relation=True, the value of the setting is the evaluated
+value of the relation instead (<code class="docutils literal notranslate"><span class="pre">self.relation.evaluated_value</span></code>).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.settings.Setting.has_active_relation">
+<span class="sig-name descname"><span class="pre">has_active_relation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/pyqsl/settings.html#Setting.has_active_relation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.settings.Setting.has_active_relation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if relation is not None and use_relation is True.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.settings.Setting.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#pyqsl.settings.Setting.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pyqsl.settings.Setting.relation">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">relation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="s"><span class="pre">'Relation'</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pyqsl.settings.Setting.relation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the relation for the setting if set or None otherwise.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.settings.Setting.unit">
+<span class="sig-name descname"><span class="pre">unit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#pyqsl.settings.Setting.unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.settings.Setting.use_relation">
+<span class="sig-name descname"><span class="pre">use_relation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#pyqsl.settings.Setting.use_relation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pyqsl.settings.Setting.value">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><a class="headerlink" href="#pyqsl.settings.Setting.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the value of the setting.</p>
+<p>If there is an activate relation, i.e. <code class="docutils literal notranslate"><span class="pre">self.has_active_relation()==True</span></code> and
+the relation is evaluated, returns the evaluated value of the relation instead.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyqsl.settings.Settings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyqsl.settings.</span></span><span class="sig-name descname"><span class="pre">Settings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_fields:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pyqsl.settings.Setting]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/settings.html#Settings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.settings.Settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A collection of individual instances Setting objects.</p>
+<p>Settings are used as the input argument for pyqsl.run function and
+are the primary way of providing inputs for the simulation task.</p>
+<p>An empty <code class="docutils literal notranslate"><span class="pre">Settings</span></code> object is created as  <code class="docutils literal notranslate"><span class="pre">settings</span> <span class="pre">=</span> <span class="pre">pyqsl.Settings()</span></code>.
+In order to add a setting for a parameter, one can do either of the following:
+* <code class="docutils literal notranslate"><span class="pre">settings.a</span> <span class="pre">=</span> <span class="pre">2</span></code>
+* <a href="#id9"><span class="problematic" id="id10">``</span></a>a = Setting(‘a’, 2); settings.a = a</p>
+<p>The setting values can be accessed as <code class="docutils literal notranslate"><span class="pre">settings['a']</span></code> or <code class="docutils literal notranslate"><span class="pre">settings.a</span></code>.
+The Setting objects can contain relations, which need to be resolved before
+their values can be accessed. This can be done as <code class="docutils literal notranslate"><span class="pre">settings.resolve_relations()</span></code>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.settings.Settings.resolve_relations">
+<span class="sig-name descname"><span class="pre">resolve_relations</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/pyqsl/settings.html#Settings.resolve_relations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.settings.Settings.resolve_relations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resolves all the relations in the settings hierarchy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of setting names with relations to resolve.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError if cyclic relations</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.settings.Settings.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/pyqsl/settings.html#Settings.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.settings.Settings.to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name-value pair representation of the object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary containing the setting names as keys and setting values as values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pyqsl.settings.is_acyclic">
+<span class="sig-prename descclassname"><span class="pre">pyqsl.settings.</span></span><span class="sig-name descname"><span class="pre">is_acyclic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DiGraph</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/pyqsl/settings.html#is_acyclic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.settings.is_acyclic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if graph is cyclic.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>graph</strong> – graph to be checked for cycles</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if acyclic, False if cyclic.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-pyqsl.simulation_result">
+<span id="pyqsl-simulation-result-module"></span><h2>pyqsl.simulation_result module<a class="headerlink" href="#module-pyqsl.simulation_result" title="Permalink to this heading">¶</a></h2>
+<p>Defines a class to store simulation results.</p>
+<p>Classes:</p>
+<blockquote>
+<div><p>SimulationResult</p>
+</div></blockquote>
+<dl class="py class">
+<dt class="sig sig-object py" id="pyqsl.simulation_result.SimulationResult">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyqsl.simulation_result.</span></span><span class="sig-name descname"><span class="pre">SimulationResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/simulation_result.html#SimulationResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.simulation_result.SimulationResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>This class stores the simulation results and the settings used to generate it.</p>
+<p>Simulation result is a wrapper around xarray, which is used as the main data structure.
+The underlying xarray dataset can be accessed through <code class="docutils literal notranslate"><span class="pre">`dataset`</span></code> attribute.</p>
+<p>The settings, results and sweeps can be accessed as attributes of the simulation result.</p>
+<p>There are two ways of accesssing settings, one can either directly call e.g. <code class="docutils literal notranslate"><span class="pre">`simulation_result.amplitude`</span></code>
+in which case the only setting values are returned and broadcasted to sweep dimensions.</p>
+<p>Another option is to access <code class="docutils literal notranslate"><span class="pre">`simulation_result.settings.amplitude`</span></code>, which returns the setting object.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyqsl.simulation_result.SimulationResult.dataset">
+<span class="sig-name descname"><span class="pre">dataset</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dataset</span></em><a class="headerlink" href="#pyqsl.simulation_result.SimulationResult.dataset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.simulation_result.SimulationResult.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#pyqsl.settings.Setting" title="pyqsl.settings.Setting"><span class="pre">pyqsl.settings.Setting</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/simulation_result.html#SimulationResult.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.simulation_result.SimulationResult.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns simulation parameters reordered according given order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – Attribute to fetch or a tuple of attributes to fetch.</p></li>
+<li><p><strong>order</strong> – List of settings or setting names according to which the returned data is ordered.
+If None, the default order is used. If the setting name is not part of the sweep,
+the dimensions of the returned data will be expanded so that returned data
+will always have at least as many dimensions as there are settings listed here.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returned data. The return value will have the same dimensions as the key argument, i.e.
+for a string input returns data correspond to the key, and for a tuple input returns a
+tuple of data arrays.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyqsl.simulation_result.SimulationResult.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl/simulation_result.html#SimulationResult.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.simulation_result.SimulationResult.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the simulation result to a pickle file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – savepath</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pyqsl.simulation_result.load">
+<span class="sig-prename descclassname"><span class="pre">pyqsl.simulation_result.</span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyqsl.simulation_result.SimulationResult" title="pyqsl.simulation_result.SimulationResult"><span class="pre">SimulationResult</span></a></span></span><a class="reference internal" href="_modules/pyqsl/simulation_result.html#load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.simulation_result.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the dataset from pickle file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Load path</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-pyqsl">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-pyqsl" title="Permalink to this heading">¶</a></h2>
 <p>Package for running simulations and saving the results.</p>
-<div class="section" id="usage">
-<h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
-<p>The simulation task is performed in a user-defined funtion that takes a dictionary of the simulation parameters as an input and gives simulation result as an output.</p>
-<p>The power of pyqsl is to enable the user to change the values of simulation parameters in a loop. This is done in the simulation_loop function. The simulation loop takes a simulation task as a parameter and loops it over with all the different parameters defined by the user in the sweep_arrays dictionary. The keys of the dictionary are the parameters that are varied (they need to exist also in the params dictionary) and the keys are lists of parameter values.</p>
-<p>The output of the simulation loop is a list with length equal to the total number of different parameter configurations. There is also an option to perform the simulation in parallel.</p>
-<p>The output list can be further saved by the saving functions provided. Some of the saving functions require the output list elements to have a specified structure, most notably the .hdf5 saving function that uses Labber API to save the data. The save_data_pickle function on the other hand saves the data in binary format, that can be loaded using the load_pickled_data function.</p>
-</div>
-</div>
-</div>
+<section id="usage">
+<h3>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h3>
+<p>The simulation task is performed in a user-defined funtion that takes a
+dictionary of the simulation parameters as an input and gives simulation
+result as an output.</p>
+<p>The power of pyqsl is to enable the user to change the values of simulation
+parameters in a loop. This is done in the run() function. The
+run function takes a simulation task as an argument and loops it over with
+all the different parameters defined by the user in the sweeps dictionary.
+The keys of the dictionary are the parameters that are varied
+(they need to exist also in the params dictionary) and the keys are lists of
+parameter values.</p>
+<p>The output of the run function is a SimulationResult instance which attributes
+correspond to different simulation result arrays. The dimensions of the result
+arreys correspond to different parameter configurations. There is also an option
+to perform the simulation in parallel.</p>
+<p>The results can be saved to a file using the <code class="docutils literal notranslate"><span class="pre">save</span></code> method in simulation result.</p>
+</section>
+<dl class="py function">
+<dt class="sig sig-object py" id="pyqsl.add_stderr_logger">
+<span class="sig-prename descclassname"><span class="pre">pyqsl.</span></span><span class="sig-name descname"><span class="pre">add_stderr_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">StreamHandler</span></span></span><a class="reference internal" href="_modules/pyqsl.html#add_stderr_logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.add_stderr_logger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper for quickly adding a StreamHandler to the logger. Useful for
+debugging. Returns the handler after adding it. Adapted from urllib3.</p>
+</dd></dl>
+
+</section>
+</section>
 
 
           </div>
@@ -201,17 +544,15 @@ is the result of the simulation.</li>
 </ul>
 </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -220,8 +561,8 @@ is the result of the simulation.</li>
       &copy;2019, Antti Vepsäläinen.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.3</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="_sources/pyqsl.rst.txt"

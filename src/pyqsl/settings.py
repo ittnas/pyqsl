@@ -3,6 +3,7 @@ Create a settings object for pyqsl.
 
 Classes:
 
+    Setting
     Settings
 """
 from __future__ import annotations
@@ -103,7 +104,19 @@ class Setting:
 @dataclass
 class Settings:
     """
-    A class that contains settings for the simulation.
+    A collection of individual instances Setting objects.
+
+    Settings are used as the input argument for pyqsl.run function and
+    are the primary way of providing inputs for the simulation task.
+
+    An empty ``Settings`` object is created as  ``settings = pyqsl.Settings()``.
+    In order to add a setting for a parameter, one can do either of the following:
+    * ``settings.a = 2``
+    * ``a = Setting('a', 2); settings.a = a
+
+    The setting values can be accessed as ``settings['a']`` or ``settings.a``.
+    The Setting objects can contain relations, which need to be resolved before
+    their values can be accessed. This can be done as ``settings.resolve_relations()``.
     """
 
     _fields: dict[str, Setting] = dataclasses.field(default_factory=dict)

@@ -1,6 +1,8 @@
 """
 Defines a class to store simulation results.
+
 Classes:
+
     SimulationResult
 """
 import logging
