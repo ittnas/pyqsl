@@ -5,26 +5,43 @@ Classes:
 
     Settings
 """
+from __future__ import annotations
+
 import dataclasses
 from dataclasses import dataclass
 from typing import Any, Optional, Union
+
 import networkx as nx
 
 
 @dataclass
 class Setting:
+    """
+    Describes a setting for the simulation.
+
+    A settings are used as an input arguments for simulation task functions. They
+    are basically name-value pairs, where name should correspond to the name of the
+    input argument. Additinoanally, settings can contain meta-information, such as
+    unit for the quantity.
+
+    Some settings are not free parameters, but related to each other. This can be
+    described by asigning a relation to the setting. If relation is is activated
+    through setting use_relation=True, the value of the setting is the evaluated
+    value of the relation instead (``self.relation.evaluated_value``).
+    """
+
     name: str
     value: Any
     unit: str = ""
-    relation: Optional["relation.Relation"]
+    relation: Optional["Relation"] = None
     use_relation: bool = False
-    _relation: Optional["relation.Relation"] = dataclasses.field(
+    _relation: Optional["Relation"] = dataclasses.field(
         init=False, repr=False, default=None
     )
     _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
 
-    def __add__(self, o):
-        return self.value + o
+    def __add__(self, other):
+        return self.value + other
 
     __radd__ = __add__
 
@@ -42,34 +59,43 @@ class Setting:
         """
         return self.relation is not None and self.use_relation
 
-    @property
-    def relation(self) -> "relation.Relation":
+    @property  # type: ignore[no-redef]
+    def relation(self) -> "Relation" | None:
+        """
+        Returns the relation for the setting if set or None otherwise.
+        """
         return self._relation
 
     @relation.setter
-    def relation(self, value: Union[str, "relation.Relation"]):
-        if type(value) is property:
+    def relation(self, value: Union[str, "Relation" | None]):
+        if isinstance(value, property):
             # initial value not specified, use default
             value = None
         if isinstance(value, str):
-            value = Equation(equation=value)
+            value = Equation(equation=value)  # type: ignore[call-arg]
         self._relation = value
         if value is not None:
             self.use_relation = True
 
-    @property
+    @property  # type: ignore[no-redef]
     def value(self) -> Any:
+        """
+        Returns the value of the setting.
+
+        If there is an activate relation, i.e. ``self.has_active_relation()==True`` and
+        the relation is evaluated, returns the evaluated value of the relation instead.
+        """
         return (
-            self.relation.evaluated_value
+            self.relation.evaluated_value  # type: ignore[union-attr]
             if (
-                self.has_active_relation() and self.relation.evaluated_value is not None
+                self.has_active_relation() and self.relation.evaluated_value is not None  # type: ignore[union-attr]
             )
             else self._value
         )
 
     @value.setter
     def value(self, value: Any):
-        if type(value) is property:
+        if isinstance(value, property):
             value = None
         self._value = value
 
@@ -101,7 +127,10 @@ class Settings:
                     + f", {setting.relation} ({'on' if setting.use_relation else 'off'})"
                 )
             if setting.has_active_relation():
-                output = output + f", value={setting._value}"
+                output = (
+                    output
+                    + f", value={setting._value}"  # pylint: disable=protected-access
+                )
             output = output + "\n"
         return output
 
@@ -200,9 +229,10 @@ def is_acyclic(graph: nx.DiGraph) -> bool:
     Returns:
         True if acyclic, False if cyclic.
     """
-    for cycle in nx.simple_cycles(graph):
+    for _ in nx.simple_cycles(graph):
         return False
     return True
 
 
-from .relation import Equation  # Cyclic import
+# Avoid cyclic import
+from .relation import Equation, Relation  # pylint: disable=wrong-import-position

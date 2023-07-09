@@ -1,8 +1,10 @@
+import logging
+
 import numpy as np
+from qutip import *
+
 # from pyqsl import core
 import pyqsl.core as pyqsl
-from qutip import *
-import logging
 
 w0 = 5  # QB0 freq
 w1 = 7  # QB1 freq
@@ -21,8 +23,11 @@ tlist = np.linspace(0, 100, 51)  # Time instances in the simulation.
 psi0 = tensor(basis(2, 0), basis(2, 0), basis(2, 0))  # The initial state.
 
 # The list of output operators
-output_list = [tensor(sigmaz(), identity(2), identity(2)), tensor(identity(
-    2), sigmaz(), identity(2)), tensor(identity(2), identity(2), sigmaz())]
+output_list = [
+    tensor(sigmaz(), identity(2), identity(2)),
+    tensor(identity(2), sigmaz(), identity(2)),
+    tensor(identity(2), identity(2), sigmaz()),
+]
 
 # These parameres are swept in the loop.
 sweep_arrays = {"w1": np.linspace(4, 8, 41), "wd": np.linspace(3, 9, 41)}
@@ -47,34 +52,66 @@ params = {
 
 
 def H1_coeff(t, args):
-    """ The coefficient containing the time dependent part of the Hamiltonian. """
-    return np.sin(args['wd']*t)
+    """The coefficient containing the time dependent part of the Hamiltonian."""
+    return np.sin(args["wd"] * t)
 
 
 def create_hamiltonian(params, *args, **kwargs):
-    """ Prepares the Hamiltonian in the system in Qutip format. Needs to be recalculated at every step in the loop."""
-    params["H"] = 0.5*(tensor(params["w0"]*sigmaz(), identity(2), identity(2)) + tensor(identity(2),
-                                                                                        sigmaz()*params["w1"], identity(2)) + tensor(identity(2), identity(2), sigmaz()*params["w2"])) + params["g01"]*tensor(sigmax(), sigmax(), identity(2)) + params["g12"]*tensor(identity(2), sigmax(), sigmax()) + params["g02"]*tensor(sigmax(), identity(2), sigmax())
-    params["c_ops"] = [np.sqrt(params["gamma_0"])*tensor(destroy(2), identity(2), identity(2)), np.sqrt(params["gamma_1"])*tensor(
-        identity(2), destroy(2), identity(2)), np.sqrt(params["gamma_2"])*tensor(identity(2), identity(2), destroy(2))]
-    params["H1"] = params["Ad"]*tensor(sigmax(), identity(2), identity(
-        2)) + tensor(identity(2), sigmax(), identity(2)) + tensor(identity(2), identity(2), sigmax())
+    """Prepares the Hamiltonian in the system in Qutip format. Needs to be recalculated at every step in the loop."""
+    params["H"] = (
+        0.5
+        * (
+            tensor(params["w0"] * sigmaz(), identity(2), identity(2))
+            + tensor(identity(2), sigmaz() * params["w1"], identity(2))
+            + tensor(identity(2), identity(2), sigmaz() * params["w2"])
+        )
+        + params["g01"] * tensor(sigmax(), sigmax(), identity(2))
+        + params["g12"] * tensor(identity(2), sigmax(), sigmax())
+        + params["g02"] * tensor(sigmax(), identity(2), sigmax())
+    )
+    params["c_ops"] = [
+        np.sqrt(params["gamma_0"]) * tensor(destroy(2), identity(2), identity(2)),
+        np.sqrt(params["gamma_1"]) * tensor(identity(2), destroy(2), identity(2)),
+        np.sqrt(params["gamma_2"]) * tensor(identity(2), identity(2), destroy(2)),
+    ]
+    params["H1"] = (
+        params["Ad"] * tensor(sigmax(), identity(2), identity(2))
+        + tensor(identity(2), sigmax(), identity(2))
+        + tensor(identity(2), identity(2), sigmax())
+    )
     params["H1_coeff"] = H1_coeff
     # print(params["H"])
 
 
 def task(params, *args, **kwargs):
-    """ The simulation task """
-    output_temp = mesolve([params["H"], [params["H1"], params["H1_coeff"]]], params["psi0"],
-                          params["tlist"], params["c_ops"], params["output_list"], args={"wd": params["wd"]})
+    """The simulation task"""
+    output_temp = mesolve(
+        [params["H"], [params["H1"], params["H1_coeff"]]],
+        params["psi0"],
+        params["tlist"],
+        params["c_ops"],
+        params["output_list"],
+        args={"wd": params["wd"]},
+    )
     output = {}
     for ii in range(len(params["output_list"])):
-        output['q' + str(ii)] = (output_temp.expect[ii],
-                                 ('tlist', params['tlist']))
+        output["q" + str(ii)] = (output_temp.expect[ii], ("tlist", params["tlist"]))
     return output
 
 
-output = pyqsl.simulation_loop(params, task, sweep_arrays=sweep_arrays,
-                               pre_processing_in_the_loop=create_hamiltonian, parallelize=True)
-pyqsl.save_data_hdf5("three_qubits_1", output, params, sweep_arrays, [
-], use_date_directory_structure=False, overwrite=False)
+output = pyqsl.simulation_loop(
+    params,
+    task,
+    sweep_arrays=sweep_arrays,
+    pre_processing_in_the_loop=create_hamiltonian,
+    parallelize=True,
+)
+pyqsl.save_data_hdf5(
+    "three_qubits_1",
+    output,
+    params,
+    sweep_arrays,
+    [],
+    use_date_directory_structure=False,
+    overwrite=False,
+)

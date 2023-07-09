@@ -4,11 +4,13 @@ Simulates a cross resonance gate between two qubits.
 Antti Vepsalainen, 2019
 """
 
+import logging
+
 import numpy as np
+from qutip import *
+
 # from pyqsl import core
 import pyqsl.core as pyqsl
-from qutip import *
-import logging
 
 w0 = 5.5  # QB0 freq
 w1 = 6  # QB1 freq
@@ -32,8 +34,11 @@ tlist = np.linspace(0, 2000, 501)  # Time instances in the simulation.
 psi0 = tensor((basis(nq0, 1) + basis(nq0, 0)).unit(), basis(nq1, 0))
 
 # The list of output operators
-output_list = [tensor(num(nq0), identity(nq1)),
-               tensor(identity(nq0), num(nq1)), tensor(identity(nq0), create(nq1) + destroy(nq1))]
+output_list = [
+    tensor(num(nq0), identity(nq1)),
+    tensor(identity(nq0), num(nq1)),
+    tensor(identity(nq0), create(nq1) + destroy(nq1)),
+]
 
 # These parameres are swept in the loop.
 sweep_arrays = {"wd0": np.linspace(5.8, 6.2, 511)}
@@ -60,13 +65,13 @@ params = {
 
 
 def w0_coeff(t, args):
-    """ The coefficient containing the time dependent part of the Hamiltonian. """
-    return np.sin(args['wd0']*t)
+    """The coefficient containing the time dependent part of the Hamiltonian."""
+    return np.sin(args["wd0"] * t)
 
 
 def w1_coeff(t, args):
-    """ The coefficient containing the time dependent part of the Hamiltonian. """
-    return np.sin(args['wd1']*t)
+    """The coefficient containing the time dependent part of the Hamiltonian."""
+    return np.sin(args["wd1"] * t)
 
 
 def get_n_level_spec(w, a, n):
@@ -77,7 +82,7 @@ def get_n_level_spec(w, a, n):
     """
     op = np.zeros((n, n))
     for ii in range(1, n):
-        op[ii, ii] = w*ii - (ii-1)*a
+        op[ii, ii] = w * ii - (ii - 1) * a
     return Qobj(op)
 
 
@@ -87,17 +92,34 @@ def get_empty(n):
 
 
 def create_hamiltonian(params, *args, **kwargs):
-    """ Prepares the Hamiltonian in the system in Qutip format. Needs to be recalculated at every step in the loop."""
-    params["H"] = tensor(get_n_level_spec(
-        params["w0"], params["a0"], params["nq0"]), identity(params['nq1'])) + tensor(identity(params['nq0']), get_n_level_spec(params["w1"], params["a1"], params["nq1"])) + params["g01"]*(tensor(create(params['nq0']), destroy(params['nq1'])) + tensor(destroy(params['nq0']), create(params['nq1'])))
-    params["c_ops"] = [np.sqrt(params["gamma_0"])*tensor(destroy(params["nq0"]), identity(
-        params["nq1"])), np.sqrt(params["gamma_1"])*tensor(identity(params["nq0"]), destroy(params["nq1"]))]
-    params["H1_0"] = params["Ad0"] * \
-        tensor(create(params['nq0']) +
-               destroy(params['nq0']), identity(params['nq1']))
-    params["H1_1"] = params["Ad1"] * \
-        tensor(identity(params['nq0']), create(
-            params['nq1'])+destroy(params['nq1']))
+    """Prepares the Hamiltonian in the system in Qutip format. Needs to be recalculated at every step in the loop."""
+    params["H"] = (
+        tensor(
+            get_n_level_spec(params["w0"], params["a0"], params["nq0"]),
+            identity(params["nq1"]),
+        )
+        + tensor(
+            identity(params["nq0"]),
+            get_n_level_spec(params["w1"], params["a1"], params["nq1"]),
+        )
+        + params["g01"]
+        * (
+            tensor(create(params["nq0"]), destroy(params["nq1"]))
+            + tensor(destroy(params["nq0"]), create(params["nq1"]))
+        )
+    )
+    params["c_ops"] = [
+        np.sqrt(params["gamma_0"])
+        * tensor(destroy(params["nq0"]), identity(params["nq1"])),
+        np.sqrt(params["gamma_1"])
+        * tensor(identity(params["nq0"]), destroy(params["nq1"])),
+    ]
+    params["H1_0"] = params["Ad0"] * tensor(
+        create(params["nq0"]) + destroy(params["nq0"]), identity(params["nq1"])
+    )
+    params["H1_1"] = params["Ad1"] * tensor(
+        identity(params["nq0"]), create(params["nq1"]) + destroy(params["nq1"])
+    )
     params["w0_coeff"] = w0_coeff
     params["w1_coeff"] = w1_coeff
 
@@ -106,18 +128,37 @@ def task(params, *args, **kwargs):
     """
     Uses the qutip Lindblad equation solver to calcualte the time-evolution of the time-dependent Hamiltonian.
     """
-    output_temp = mesolve([params["H"], [params["H1_0"], params["w0_coeff"]], [params["H1_1"], params["w1_coeff"]]], params["psi0"],
-                          params["tlist"], params["c_ops"], params["output_list"], args={"wd0": params["wd0"], "wd1": params["wd1"]})
+    output_temp = mesolve(
+        [
+            params["H"],
+            [params["H1_0"], params["w0_coeff"]],
+            [params["H1_1"], params["w1_coeff"]],
+        ],
+        params["psi0"],
+        params["tlist"],
+        params["c_ops"],
+        params["output_list"],
+        args={"wd0": params["wd0"], "wd1": params["wd1"]},
+    )
     output = {}
     for ii in range(len(params["output_list"])):
-        output['q' + str(ii)] = (output_temp.expect[ii],
-                                 ('tlist', params['tlist']))
+        output["q" + str(ii)] = (output_temp.expect[ii], ("tlist", params["tlist"]))
     return output
 
 
-output = pyqsl.simulation_loop(params, task, sweep_arrays=sweep_arrays,
-                               pre_processing_in_the_loop=create_hamiltonian, parallelize=True)
-pyqsl.save_data_hdf5("cross_resonance", output, params, sweep_arrays, [
-
-
-], use_date_directory_structure=False, overwrite=False)
+output = pyqsl.simulation_loop(
+    params,
+    task,
+    sweep_arrays=sweep_arrays,
+    pre_processing_in_the_loop=create_hamiltonian,
+    parallelize=True,
+)
+pyqsl.save_data_hdf5(
+    "cross_resonance",
+    output,
+    params,
+    sweep_arrays,
+    [],
+    use_date_directory_structure=False,
+    overwrite=False,
+)

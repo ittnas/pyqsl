@@ -1,24 +1,27 @@
-import copy as copy
+"""
+This module contains the core functionality of pyqsl simulation loop.
+
+pyqsl simulation is done by calling the ``run`` function in this module.
+"""
+import copy
 import datetime
 import inspect
-import json
 import logging
 import multiprocessing as mp
-import os
-import pickle
-from collections.abc import Iterable
 from functools import partial
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Callable, Optional, Sequence, Union
 
 import numpy as np
+import psutil
 import tqdm
-from packaging import version as pkg
+import xarray as xr
 
 from pyqsl.settings import Setting, Settings
 from pyqsl.simulation_result import SimulationResult
-import xarray as xr
 
 logger = logging.getLogger(__name__)
+
+TASK_OUTPUT_TYPE = dict[str, Any] | tuple | list | Any
 
 
 def _simulation_loop_body(
@@ -61,7 +64,7 @@ def _simulation_loop_body(
     output = task(**valid_settings)
 
     if post_processing_in_the_loop:
-        output = post_processing_in_the_loop(output, **settings_dict)
+        output = post_processing_in_the_loop(output, settings)
 
     output_as_dict = {
         "output": output,
@@ -73,84 +76,166 @@ def _simulation_loop_body(
 
 
 def run(
-    task,
+    task: Callable[..., TASK_OUTPUT_TYPE],
     settings: Settings,
-    sweeps: dict[Union[str, Setting], Sequence] = {},
-    pre_processing_before_loop=None,
-    pre_processing_in_the_loop=None,
-    post_processing_in_the_loop=None,
+    sweeps: Optional[dict[Union[str, Setting], Sequence]] = None,
+    pre_process_before_loop: Optional[Callable[[Settings], None]] = None,
+    pre_process_in_loop: Optional[Callable[[Settings], None]] = None,
+    post_process_in_loop: Optional[
+        Callable[[Settings, TASK_OUTPUT_TYPE], TASK_OUTPUT_TYPE]
+    ] = None,
     parallelize: bool = False,
     expand_data: bool = True,
     n_cores: Optional[int] = None,
     jupyter_compability_mode: bool = False,
-) -> xr.Dataset:
+) -> SimulationResult:
     """
-    Runs the simulation.
+    Runs the simulation for a given task.
+
+    The task function defines the workload for the simulation, which is run for each combination of the
+    function input arguments defined in sweeps.
+    The other input arguments for the function can be provided using the settings keyword argument.
+
+    For example, if the task function has input arguments ``a`` and ``b``, the values ``settings.a`` and
+    ``settings.b`` will be used to fetch their values.
+    Sweeping the value of input argument ``a`` for example from 0 to 2 can be accomplished by defining a
+    sweep in ``sweeps = {'a': [0, 1, 2]}``. The values of different settings can also depend on each other
+    through relations, see documentation for ``Settings`` for additional details.
+
+    The settings can be dynamically modified using callbacks which will be applied at several different
+    stages of the evaluation process. The callback ``pre_process_before_loop`` will be called before looping
+    over different sweeps, and should take settings object as an input and make necessary modifications.
+    ``pre_process_in_loop`` will be applied separatately inside the simulation loop. The final callback,
+    ``pos_process_in_loop``` will be applied after the simulation is finished, and takes the output of the
+    task and the settings as input.
+
+    The results of the simulation are returned in ``SimulationResult`` object. The structure of the object
+    depends on the task function's return type and the value of ``expand_data``. If ``expand_data`` is
+    False all the data will be stored under ``result.data``. Otherwise, the type of the task output
+    determines how the data is stored.
+
+    * If task function returns a dict, the values corresponding to the keys can be accessed as attributes
+      of ``result``.
+    * If task returns a list or tuple, the data can can be accessed as ``result.data[i]``, where ``i`` refer
+      to indices in the list or tuple.
+    * If task returns a single number, the data can be accessed as ``result.data``.
 
     Args:
+        task:
+            A reference to the function used for simulation. The function can accept any number of inputs
+            and should return either a tuple, a single number or a dictionary.
         settings: settings for the run
-        simulation_task :
-            A function that performs the simulation. Should have form [output = simulation_task(params)], where output
-            is the result of the simulation.
-        sweep_arrays:
-            A dictionary containing the parameters that are being swept as keys and arrays of swept parameters as values.
-        derived_arrays:
-            A dictionary containing dictionaries of parameters that are related to parameters in sweep_arrays
-        pre_processing_before_loop:
-            Function to pre-process the parameter array. Takes params dictionary as an input.
-        pre_processing_in_the_loop:
-            Modifies the parameter array in the loop. All the parameters that are dependant on the swept parameters should be recalculated here.
-        post_processing_in_the_loop:
-            Function can be used to modify the output of the simulation task. Takes params as an input.
+        sweeps:
+            A dictionary containing the parameters that are being swept as keys and arrays of swept
+            parameters as values.
+        pre_process_before_loop:
+            Function to pre-process the parameter array.
+        pre_process_in_loop:
+            Modifies the parameter array in the loop. All the parameters that are dependant on the
+            swept parameters should be recalculated here.
+        post_process_in_loop:
+            Function can be used to modify the output of the simulation task.
         parallelize:
             Boolean indicating whether the computation should be parallelized.
         expand_data:
-            Flag indicating whether the first level of variables should be expanded. WARNING, DOES NOT WORK FOR DICT OUTPUTS!
+            Flag indicating whether the first level of variables should be expanded.
         n_cores:
-            Number of cores to use in parallel processing. If None, all the available cores are used. For negative numbers N_max + n_cores is used. Defaults to None.
+            Number of cores to use in parallel processing. If None, all the available cores are used (``N_max``).
+            For negative numbers, ``N_max + n_cores`` is used.
         jupyter_compability_mode:
-            If running in jupyter on windows, this needs to be set to True. This is due to a weird behaviour in multiprocessing, which requires
-            the task to be saved to a file.
+            If running in jupyter on windows, this needs to be set to True. This is due to a weird behaviour in
+            multiprocessing, which requires the task to be saved to a file. When using this mode, the task
+            function needs to be written in a very specific way. For example, all the imports needed
+            by the function need to be done within the function definition.
+
+    Returns:
+        SimulationResult object, that contains the resulting data and a copy of the settings.
+
+    Examples:
+        .. code-block:: python
+
+            import pyqsl
+
+            def simulation_task(a:int , b:float) -> float:
+                return a + b
+
+            settings = pyqsl.Settings()
+            settings.a = 1
+            settings.b = 2
+            result = pyqsl.run(simulation_task, settings)
+            print(result.data)
+
+        >>> 3
+
+        .. code-block:: python
+
+            import pyqsl
+
+            def simulation_task(a:int , b:float) -> float:
+                return {'c': a + b}
+
+            result = pyqsl.run(simulation_task, settings)
+            print(result.c)
+
+        >>> 3
+
+        .. code-block:: python
+
+            import pyqsl
+            import numpy as np
+
+            def simulation_task(a:int , b:float) -> float:
+                return {'c': a + b}
+
+            result = pyqsl.run(simulation_task, settings, sweeps={'a': np.linspace(0, 1, 101)})
+            print(result.c.shape)
+
+        >>> (101, )
 
     """
     start_time = datetime.datetime.now()
-    logger.info("Simulation started at " + str(start_time))
+    logger.info("Simulation started at %s", str(start_time))
+    sweeps = {} if sweeps is None else sweeps
     dims = [len(sweep_values) for sweep_values in sweeps.values()]
 
-    N_tot = int(np.prod(dims))
-    logger.info("Sweep dimensions: " + str(dims) + ".")
+    N_tot = int(np.prod(dims))  # pylint: disable=invalid-name
+    logger.info("Sweep dimensions: %s.", str(dims))
     output_array = [None] * N_tot
 
     settings = copy.deepcopy(settings)
 
-    if pre_processing_before_loop:
-        pre_processing_before_loop(settings)
+    if pre_process_before_loop:
+        pre_process_before_loop(settings)
 
     windows_and_jupyter = jupyter_compability_mode
     if parallelize and windows_and_jupyter:
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
-        with open(f"./tmp_simulation_task.py", "w") as file:
-            file.write(inspect.getsource(task).replace(task.__name__, "task"))
-        # import sys
-        # from pprint import pprint
-        # pprint(sys.path)
-        # This does not work with pytest
-        from tmp_simulation_task import task
+        with open("./tmp_simulation_task.py", "w", encoding="utf-8") as file:
+            file.write(
+                inspect.getsource(task).replace(task.__name__, "simulation_task")
+            )
+        # Note, This does not work within pytest
+        from tmp_simulation_task import (  # pylint: disable=import-error,import-outside-toplevel
+            simulation_task,
+        )
+    else:
+        simulation_task = task
 
     simulation_loop_body_partial = partial(
         _simulation_loop_body,
         settings=settings,
         dims=dims,
         sweeps=sweeps,
-        pre_processing_in_the_loop=pre_processing_in_the_loop,
-        post_processing_in_the_loop=post_processing_in_the_loop,
-        task=task,
+        pre_processing_in_the_loop=pre_process_in_loop,
+        post_processing_in_the_loop=post_process_in_loop,
+        task=simulation_task,
     )
     if parallelize:
         if n_cores is not None:
             if n_cores < 0:
-                n_cores = np.max([os.cpu_count() + n_cores, 1])
+                max_nbr_cores = len(psutil.Process().cpu_affinity())
+                n_cores = np.max([max_nbr_cores + n_cores, 1])
         with mp.Pool(processes=n_cores) as p:
             output_array = list(
                 tqdm.tqdm(
@@ -165,11 +250,9 @@ def run(
             output_array[ii] = output
     end_time = datetime.datetime.now()
     logger.info(
-        "Simulation finished at "
-        + str(end_time)
-        + ". The duration of the simulation was "
-        + str(end_time - start_time)
-        + "."
+        "Simulation finished at %s. The duration of the simulation was %s.",
+        str(end_time),
+        str(end_time - start_time),
     )
     dataset = _create_dataset(
         output_array, settings, sweeps, expand_data=expand_data, dims=dims
@@ -188,6 +271,7 @@ def _create_dataset(
     """
     Creates xarray dataset from simulation results.
     """
+    # pylint: disable=too-many-branches,too-many-statements
     coords = {
         setting.name if isinstance(setting, Setting) else setting: data
         for setting, data in sweeps.items()
@@ -196,12 +280,12 @@ def _create_dataset(
 
     data_vars: dict[str, Any] = {}
 
-    temporary_array = {}
+    temporary_array: dict[str, Any] = {}
     for key in output_array[0]:
         temporary_array[key] = []
-    for ii in range(len(output_array)):
+    for ii, value in enumerate(output_array):
         for key in output_array[0]:
-            temporary_array[key].append(output_array[ii][key])
+            temporary_array[key].append(value[key])
     for key in output_array[0]:
         new_shape = np.array(temporary_array[key]).shape[1:]
         if isinstance(dims, int):
@@ -233,11 +317,11 @@ def _create_dataset(
                 relation_dict.keys(), relation_array.flat[0].keys()
             ):
                 relation_dict[key_rd].append(relation_array.flat[ii][key_ra])
-        for key in relation_dict:
-            new_shape = np.array(relation_dict[key]).shape[1:]
+        for key, value in relation_dict.items():
+            new_shape = np.array(value).shape[1:]
             new_dims = dims.copy()
             new_dims.extend(new_shape)
-            relation_dict[key] = np.reshape(np.array(relation_dict[key]), new_dims)
+            relation_dict[key] = np.reshape(np.array(value), new_dims)
 
     if expand_data:
         if isinstance(output_array.flat[0], dict):
@@ -257,18 +341,16 @@ def _create_dataset(
                 temporary_array[key] = np.reshape(
                     np.array(temporary_array[key]), new_dims
                 )
-            for key in temporary_array:
-                data_vars[key] = (tuple(coords), temporary_array[key])
+            for key, value in temporary_array.items():
+                data_vars[key] = (tuple(coords), value)
             # return temporary_array
         elif output_array.shape != tuple(dims):
             # Iterable that has been converted to np.array
             for ii in range(len(dims)):
                 output_array_reshaped = np.moveaxis(output_array_reshaped, 0, -1)
             extended_coords = tuple(
-                [
-                    f"index_{ii}"
-                    for ii in range(len(output_array_reshaped.shape) - len(dims))
-                ]
+                f"index_{ii}"
+                for ii in range(len(output_array_reshaped.shape) - len(dims))
             ) + tuple(coords)
             data_vars["data"] = (extended_coords, output_array_reshaped)
         else:
@@ -276,17 +358,13 @@ def _create_dataset(
             data_vars["data"] = (tuple(coords), output_array_reshaped)
     else:
         extended_coords = tuple(coords) + tuple(
-            [
-                f"index_{ii}"
-                for ii in range(len(output_array_reshaped.shape) - len(dims))
-            ]
+            f"index_{ii}" for ii in range(len(output_array_reshaped.shape) - len(dims))
         )
         data_vars["data"] = (tuple(extended_coords), output_array_reshaped)
 
     for setting_name, value in relation_dict.items():
         data_vars[setting_name] = (tuple(coords), value)
 
-    # print(data_vars, coords)
     dataset = xr.Dataset(
         data_vars=data_vars, coords=coords, attrs={"settings": settings}
     )
@@ -297,9 +375,9 @@ def _create_dataset(
 def _get_invalid_args(func, argdict):
     """
     Get set of invalid arguments for a function.
-    https://stackoverflow.com/questions/196960/can-you-list-the-keyword-arguments-a-function-receives
+    Adapted from https://stackoverflow.com/questions/196960/can-you-list-the-keyword-arguments-a-function-receives.
     """
-    args, varargs, varkw, _, kwonlyargs, _, _ = inspect.getfullargspec(func)
+    args, _, varkw, _, _, _, _ = inspect.getfullargspec(func)
     if varkw:
         return set()  # All accepted
     return set(argdict) - set(args)

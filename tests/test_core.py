@@ -1,7 +1,10 @@
-import pytest
-import pyqsl
-import numpy as np
 from typing import Any
+
+import numpy as np
+import pytest
+
+import pyqsl
+
 
 @pytest.fixture()
 def ab_settings():
@@ -16,15 +19,15 @@ def simple_task(a: int, b: int) -> int:
 
 
 def more_complicated_task(a: Any, b: Any, c: Any) -> Any:
-    return (a + b)*c
+    return (a + b) * c
 
 
 def task_that_returns_tuples(a: float, b: float) -> tuple[float, float]:
-    return a+b, a-b
+    return a + b, a - b
 
 
 def task_that_returns_dicts(a: float, b: float) -> dict[str, float]:
-    return {'sum': a+b, 'diff': a - b}
+    return {"sum": a + b, "diff": a - b}
 
 
 def add_new_setting(settings: pyqsl.Settings):
@@ -36,7 +39,7 @@ def adjust_settings(settings: pyqsl.Settings):
 
 
 def update_output(output, settings):
-    pass
+    return {"result": output}
 
 
 def test_run():
@@ -52,9 +55,10 @@ def test_run():
 
 
 def test_sweeps(ab_settings):
-    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
-              ab_settings.b: np.linspace(-1, 0, 5)
-              }
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+        ab_settings.b: np.linspace(-1, 0, 5),
+    }
     result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=False)
     assert result.data.shape == (3, 5)
     result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=True)
@@ -62,48 +66,92 @@ def test_sweeps(ab_settings):
 
 
 def test_parallel_execution(ab_settings):
-    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
-              }
-    result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=False, parallelize = True)
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+    }
+    result = pyqsl.run(
+        simple_task, ab_settings, sweeps=sweeps, expand_data=False, parallelize=True
+    )
     assert result.data.shape == (3,)
     assert np.all(result.data == [3, 3.5, 4.0])
 
 
 def test_parallel_n_cores(ab_settings):
-    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
-              }
-    result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=False, parallelize = True, n_cores=-500)
-    result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=False, parallelize = True, n_cores=4)
-    result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=False, parallelize = True, n_cores=-1)
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+    }
+    result = pyqsl.run(
+        simple_task,
+        ab_settings,
+        sweeps=sweeps,
+        expand_data=False,
+        parallelize=True,
+        n_cores=-500,
+    )
+    result = pyqsl.run(
+        simple_task,
+        ab_settings,
+        sweeps=sweeps,
+        expand_data=False,
+        parallelize=True,
+        n_cores=4,
+    )
+    result = pyqsl.run(
+        simple_task,
+        ab_settings,
+        sweeps=sweeps,
+        expand_data=False,
+        parallelize=True,
+        n_cores=-1,
+    )
     with pytest.raises(ValueError):
-        result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps, expand_data=False, parallelize = True, n_cores=0)
+        result = pyqsl.run(
+            simple_task,
+            ab_settings,
+            sweeps=sweeps,
+            expand_data=False,
+            parallelize=True,
+            n_cores=0,
+        )
 
 
 def test_task_that_returns_tuples(ab_settings):
-    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
-              ab_settings.b: np.linspace(-1, 0, 5)
-              }
-    result = pyqsl.run(task_that_returns_tuples, ab_settings, sweeps=sweeps, expand_data=True)
-    assert result.data[0].shape == (3, 5) # First element of tuple
-    assert result.data[1].shape == (3, 5) # Second element of tuple
-    result = pyqsl.run(task_that_returns_tuples, ab_settings, sweeps=sweeps, expand_data=False)
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+        ab_settings.b: np.linspace(-1, 0, 5),
+    }
+    result = pyqsl.run(
+        task_that_returns_tuples, ab_settings, sweeps=sweeps, expand_data=True
+    )
+    assert result.data[0].shape == (3, 5)  # First element of tuple
+    assert result.data[1].shape == (3, 5)  # Second element of tuple
+    result = pyqsl.run(
+        task_that_returns_tuples, ab_settings, sweeps=sweeps, expand_data=False
+    )
     assert result.data.shape == (3, 5, 2)
 
 
 def test_task_that_returns_dicts(ab_settings):
-    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
-              ab_settings.b: np.linspace(-1, 0, 5)
-              }
-    result = pyqsl.run(task_that_returns_dicts, ab_settings, sweeps=sweeps, expand_data=True)
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+        ab_settings.b: np.linspace(-1, 0, 5),
+    }
+    result = pyqsl.run(
+        task_that_returns_dicts, ab_settings, sweeps=sweeps, expand_data=True
+    )
     assert result.sum.shape == (3, 5)  # First element of tuple
     assert result.diff.shape == (3, 5)  # Second element of tuple
-    result = pyqsl.run(task_that_returns_dicts, ab_settings, sweeps=sweeps, expand_data=False)
+    result = pyqsl.run(
+        task_that_returns_dicts, ab_settings, sweeps=sweeps, expand_data=False
+    )
     assert result.data.shape == (3, 5)
-    assert result.data[0, 0]['sum'] == -1.0
+    assert result.data[0, 0]["sum"] == -1.0
 
 
 def test_prepocessing(ab_settings):
-    result = pyqsl.run(more_complicated_task, ab_settings, pre_processing_before_loop=add_new_setting)
+    result = pyqsl.run(
+        more_complicated_task, ab_settings, pre_process_before_loop=add_new_setting
+    )
     # Chech that c is not added to settings
     with pytest.raises(AttributeError):
         ab_settings.c
@@ -111,33 +159,56 @@ def test_prepocessing(ab_settings):
     assert result.data == 25
 
 
-def test_prepocessing_in_loop(ab_settings):
-    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
-              }
-    result = pyqsl.run(more_complicated_task, ab_settings, sweeps=sweeps, pre_processing_in_the_loop=adjust_settings)
+def test_prepocess_in_loop(ab_settings):
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+    }
+    result = pyqsl.run(
+        more_complicated_task,
+        ab_settings,
+        sweeps=sweeps,
+        pre_process_in_loop=adjust_settings,
+    )
     assert (result.data == [9, 10.5, 12]).all()
 
 
-def test_post_processing_in_the_loop(ab_settings):
-    sweeps = {ab_settings.a.name: np.linspace(0, 1, 3),
-              }
-    result = pyqsl.run(more_complicated_task, ab_settings, sweeps=sweeps, pre_processing_in_the_loop=adjust_settings)
+def test_post_process_in_loop(ab_settings):
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+    }
+    result = pyqsl.run(
+        more_complicated_task,
+        ab_settings,
+        sweeps=sweeps,
+        pre_process_in_loop=adjust_settings,
+        post_process_in_loop=update_output,
+    )
+    assert result.result.shape == (3,)
 
 
 def test_simulation_with_relations(ab_settings):
     sweeps = {ab_settings.a: np.linspace(0, 1, 3)}
-    ab_settings.b.relation = pyqsl.Equation(equation='a + 1')
+    ab_settings.b.relation = pyqsl.Equation(equation="a + 1")
     result = pyqsl.run(simple_task, ab_settings, sweeps=sweeps)
     assert (result.data == [1, 2, 3]).all()
 
 
 def test_get_invalid_args():
-    args = {'a':1, 'b':2, 'c':3}
-    def task1(a, b): pass
-    def task2(a, b, **kw): return kw['c']
-    def task3(a, b, c=2): return c
-    def task4(a=1): pass
-    assert pyqsl.core._get_invalid_args(task1, args) == set('c')
+    args = {"a": 1, "b": 2, "c": 3}
+
+    def task1(a, b):
+        pass
+
+    def task2(a, b, **kw):
+        return kw["c"]
+
+    def task3(a, b, c=2):
+        return c
+
+    def task4(a=1):
+        pass
+
+    assert pyqsl.core._get_invalid_args(task1, args) == set("c")
     assert pyqsl.core._get_invalid_args(task2, args) == set()
     assert pyqsl.core._get_invalid_args(task3, args) == set()
-    assert pyqsl.core._get_invalid_args(task4, args) == {'c', 'b'}
+    assert pyqsl.core._get_invalid_args(task4, args) == {"c", "b"}

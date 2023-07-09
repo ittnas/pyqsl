@@ -12,13 +12,15 @@ Classes:
     LookupTable
 """
 import dataclasses
-from typing import Union, Any, Optional
-from .settings import Setting
+import logging
 from abc import ABC, abstractmethod
+from typing import Any, Optional, Union
+
 import numexpr as ne
 import numpy as np
-import logging
 from scipy.interpolate import interpn
+
+from .settings import Setting
 
 logger = logging.getLogger(__name__)
 
@@ -50,21 +52,24 @@ class Relation(ABC):
     )
     evaluated_value: Optional[Any] = None
 
-    @property
+    @property  # type: ignore[no-redef]
     def parameters(self) -> dict[str, Union[str, "Relation"]]:
+        """
+        Returns the parameter mapping for the relation.
+        """
         return self._parameters
 
     @parameters.setter
-    def parameters(self, v: dict[str, Union[str, Setting, "Relation"]]) -> None:
-        if type(v) is property:
+    def parameters(self, value: dict[str, Union[str, Setting, "Relation"]]) -> None:
+        if isinstance(value, property):
             # initial value not specified, use default
-            v = {}
+            value = {}
         self._parameters = {}
-        for key, value in v.items():
-            if isinstance(value, Setting):
-                self._parameters[key] = value.name
+        for key, dict_value in value.items():
+            if isinstance(dict_value, Setting):
+                self._parameters[key] = dict_value.name
             else:
-                self._parameters[key] = value
+                self._parameters[key] = dict_value
 
     @abstractmethod
     def evaluate(self, **parameter_values) -> Any:
@@ -73,7 +78,6 @@ class Relation(ABC):
         classes. The main evaluation logic of the relation should be
         implemented here.
         """
-        pass
 
     def get_mapped_setting_names(self) -> set[str]:
         """
@@ -142,7 +146,7 @@ class Equation(Relation):
         for name in expr.input_names:
             if name not in self.parameters:
                 self._parameters[name] = name
-                logger.debug(f'Adding missing parameter "{name}".')
+                logger.debug('Adding missing parameter "%s".', name)
 
     def evaluate(self, **parameter_values):
         """
@@ -164,8 +168,6 @@ class Equation(Relation):
 
 @dataclasses.dataclass
 class LookupTable(Relation):
-    data: Any = None
-    coordinates: dict[str, Any] = None
     """
     Implements a lookup table for parameter values.
 
@@ -178,9 +180,13 @@ class LookupTable(Relation):
 
     ```LookupTable(data=[4, 0, 4], coordinates={'x': [-2, 0, 2]}, parameters={'x': 'amplitude')```
 
-    ```LookupTable(data=np.ones(3,2), coordinates={'x': [-2, 0, 2], 'y': [0, 1]}, parameters={'x': 'amplitude', 'y': 'frequency')```
-    
+    ```LookupTable(
+        data=np.ones(3,2), coordinates={'x': [-2, 0, 2], 'y': [0, 1]}, parameters={'x': 'amplitude', 'y': 'frequency'
+        )```
     """
+
+    data: Any = None
+    coordinates: Optional[dict[str, Any]] = None
 
     def __post_init__(self):
         """
@@ -194,12 +200,12 @@ class LookupTable(Relation):
         for name in self.coordinates:
             if name not in self.parameters:
                 self._parameters[name] = name
-                logger.debug(f'Adding missing parameter "{name}".')
+                logger.debug('Adding missing parameter "%s".', name)
 
         data_array = np.array(self.data, dtype=object)
         data_shape = data_array.shape
         coordinate_shape = tuple(
-            [len(coordinate_values) for coordinate_values in self.coordinates.values()]
+            len(coordinate_values) for coordinate_values in self.coordinates.values()
         )
         if data_shape != coordinate_shape:
             raise ValueError(
@@ -211,7 +217,7 @@ class LookupTable(Relation):
         Evaluates the lookup table.
         """
         point = [parameter_values[coordinate] for coordinate in self.coordinates]
-        points = [values for values in self.coordinates.values()]
+        points = list(self.coordinates.values())
         values = self.data
         result = interpn(points, values, point)
 

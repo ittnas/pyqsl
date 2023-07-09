@@ -1,5 +1,6 @@
-import pyqsl
 import pytest
+
+import pyqsl
 
 
 def test_that_abstract_relation_cannot_be_created():
@@ -171,8 +172,8 @@ def test_lookup_evaluation_2d(settings):
 
 
 def test_nested_lookup_and_equation(settings):
-    lut = pyqsl.LookupTable(data=[0.1, 0.2, 0.3], coordinates={'frequency': [1, 2, 3]})
-    eq = pyqsl.Equation(equation='amplitude + lut', parameters={'lut': lut})
+    lut = pyqsl.LookupTable(data=[0.1, 0.2, 0.3], coordinates={"frequency": [1, 2, 3]})
+    eq = pyqsl.Equation(equation="amplitude + lut", parameters={"lut": lut})
     settings.frequency.value = 2
     settings.amplitude.value = 1
     settings.amplitude.relation = eq
