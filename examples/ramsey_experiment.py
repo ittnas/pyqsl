@@ -2,76 +2,77 @@
 Simulates Ramsey experiment.
 
 Antti Vepsalainen, 2019
+
+Updated on 2023
 """
 
 import logging
+import matplotlib.pyplot as plt
 
 import numpy as np
 from qutip import *
 
-# from pyqsl import core
-import pyqsl.core as pyqsl
+import pyqsl
 
 # A simple Ramsey experiment
 
-ts = 1e9
-params = {"ts": ts, "dw": 0e6 * 2 * np.pi / ts, "t1": 1000e-9 * ts}
+settings = pyqsl.Settings()
+settings.ts = 1e9  # Timescale of the simulation
+settings.dw = 0e6  # Detuning in units of frequency
+settings.dw.relation = pyqsl.Equation(
+    equation="dw * 2 * 3.1415 / ts"
+)  # Convert to angular frequency and scale
+settings.t1 = 1000e-9  # T1 time in seconds
+settings.t1.relation = pyqsl.Equation(equation="t1 * ts")
 
-sweep_arrays = {"dw": np.linspace(-10e6 * 2 * np.pi / ts, 10e6 * 2 * np.pi / ts, 201)}
+sweep_arrays = {"dw": np.linspace(-10e6, 10e6, 51)}
 
 
-def pre_processing_before_loop(params, *args, **kwargs):
+def pre_processing_before_loop(settings):
     """preprocessing loop"""
-    # params["wd"] = params["wq"] + params["dw"]
-    params["tlist"] = np.linspace(0, params["t1"], 251)
+    settings.tlist = np.linspace(0, settings.t1.value, 251)
     a = destroy(2)
-    params["H"] = params["dw"] * a.dag() * a
-    params["psi0"] = (basis(2, 0) + basis(2, 1)).unit()  # Initial state
-    params["output_list"] = [a + a.dag(), a.dag() * a]
+    settings.H = settings.dw.value * a.dag() * a
+    settings.psi0 = (basis(2, 0) + basis(2, 1)).unit()  # Initial state
+    settings.output_list = [a + a.dag(), a.dag() * a]
 
 
-def pre_processing_in_the_loop(params, *args, **kwargs):
+def pre_processing_in_loop(settings):
     a = destroy(2)
-    params["H"] = params["dw"] * a.dag() * a
+    settings.H = settings.dw.value * a.dag() * a
 
 
-def qubit_simulation_example(params, *args, **kwargs):
-    output = mesolve(
-        params["H"], params["psi0"], params["tlist"], [], params["output_list"]
-    )
-    return output
-
-
-def qubit_simulation_example_labber(params, *args, **kwargs):
-    """
-    Work function suitable for use with Labber.
-    """
-    output_temp = mesolve(
-        params["H"], params["psi0"], params["tlist"], [], params["output_list"]
-    )
+def ramsey_simulation(H, psi0, tlist, output_list):
+    output_temp = mesolve(H, psi0, tlist, [], output_list)
     output = {}
-    for ii in range(len(params["output_list"])):
-        output["p" + str(ii)] = (output_temp.expect[ii], ("tlist", params["tlist"]))
+    for ii in range(len(output_list)):
+        output["p" + str(ii)] = output_temp.expect[ii]
     return output
 
 
-logging.basicConfig(level=logging.INFO)
+def add_tlist_as_sweep(settings, sweeps):
+    return {
+        f"p{ii}": {"tlist": settings.tlist.value}
+        for ii in range(len(settings.output_list.value))
+    }
 
-output_list = pyqsl.simulation_loop(
-    params,
-    qubit_simulation_example_labber,
-    sweep_arrays=sweep_arrays,
-    pre_processing_before_loop=pre_processing_before_loop,
-    pre_processing_in_the_loop=pre_processing_in_the_loop,
+
+def return_coordinate_for_tlist(settings, sweeps):
+    return {settings.tlist, settings.tlist.value}
+
+
+output = pyqsl.run(
+    ramsey_simulation,
+    settings=settings,
+    sweeps=sweep_arrays,
+    pre_process_before_loop=pre_processing_before_loop,
+    pre_process_in_loop=pre_processing_in_loop,
+    post_process_after_loop=add_tlist_as_sweep,
     parallelize=True,
 )
 
-pyqsl.save_data_hdf5(
-    "ramsey",
-    output_list,
-    params,
-    sweep_arrays,
-    [],
-    use_date_directory_structure=False,
-    overwrite=True,
-)
+output.save("ramsey_simulation.pickle")
+
+##
+plt.pcolor(output.tlist, output.dw, output.p0)
+plt.show()

@@ -9,26 +9,32 @@ import inspect
 import logging
 import multiprocessing as mp
 from functools import partial
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, Optional
 
 import numpy as np
 import psutil
 import tqdm
 import xarray as xr
 
-from pyqsl.settings import Setting, Settings
+from pyqsl.common import (
+    DataCoordinatesType,
+    SweepsStandardType,
+    SweepsType,
+    TaskOutputType,
+    convert_data_coordinates_to_standard_form,
+    convert_sweeps_to_standard_form,
+)
+from pyqsl.settings import Settings
 from pyqsl.simulation_result import SimulationResult
 
 logger = logging.getLogger(__name__)
-
-TASK_OUTPUT_TYPE = dict[str, Any] | tuple | list | Any
 
 
 def _simulation_loop_body(
     ii: int,
     settings: Settings,
     dims,
-    sweeps,
+    sweeps: SweepsStandardType,
     pre_processing_in_the_loop,
     post_processing_in_the_loop,
     task,
@@ -39,14 +45,9 @@ def _simulation_loop_body(
     # settings_dict = settings.to_dict()
     current_ind = np.unravel_index(ii, dims)
     sweep_array_index = 0
-    for key, value in sweeps.items():
+    for sweep_name, value in sweeps.items():
         # Update all the parameters
-        sweep_name: str
-        try:
-            sweep_name = key.name
-        except AttributeError:
-            sweep_name = key
-        setattr(settings, sweep_name, value[current_ind[sweep_array_index]])
+        setattr(settings, sweep_name, value[int(current_ind[sweep_array_index])])
         sweep_array_index = sweep_array_index + 1
 
     if pre_processing_in_the_loop:
@@ -57,7 +58,7 @@ def _simulation_loop_body(
     settings_with_relations = settings.resolve_relations()
     settings_dict = settings.to_dict()
     invalid_args = _get_invalid_args(task, settings_dict)
-    logger.debug("Removing invalid args ({str(invalid_args)}) from function.")
+    logger.debug("Removing invalid args (%s) from function.", str(invalid_args))
     valid_settings = {
         key: settings_dict[key] for key in settings_dict if key not in invalid_args
     }
@@ -76,13 +77,16 @@ def _simulation_loop_body(
 
 
 def run(
-    task: Callable[..., TASK_OUTPUT_TYPE],
+    task: Callable[..., TaskOutputType],
     settings: Settings,
-    sweeps: Optional[dict[Union[str, Setting], Sequence]] = None,
+    sweeps: Optional[SweepsType] = None,
     pre_process_before_loop: Optional[Callable[[Settings], None]] = None,
     pre_process_in_loop: Optional[Callable[[Settings], None]] = None,
     post_process_in_loop: Optional[
-        Callable[[Settings, TASK_OUTPUT_TYPE], TASK_OUTPUT_TYPE]
+        Callable[[Settings, TaskOutputType], TaskOutputType]
+    ] = None,
+    post_process_after_loop: Optional[
+        Callable[[Settings, SweepsStandardType], DataCoordinatesType]
     ] = None,
     parallelize: bool = False,
     expand_data: bool = True,
@@ -106,8 +110,9 @@ def run(
     stages of the evaluation process. The callback ``pre_process_before_loop`` will be called before looping
     over different sweeps, and should take settings object as an input and make necessary modifications.
     ``pre_process_in_loop`` will be applied separatately inside the simulation loop. The final callback,
-    ``pos_process_in_loop``` will be applied after the simulation is finished, and takes the output of the
-    task and the settings as input.
+    ``post_process_in_loop``` will be applied after the simulation is finished, and takes the output of the
+    task and the settings as input. ``post_process_after_loop`` can be used to modify sweeps, for example
+    one can add an extra coordinate that corresponds to an additional dimension the simulation creates.
 
     The results of the simulation are returned in ``SimulationResult`` object. The structure of the object
     depends on the task function's return type and the value of ``expand_data``. If ``expand_data`` is
@@ -193,10 +198,12 @@ def run(
         >>> (101, )
 
     """
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-locals
     start_time = datetime.datetime.now()
     logger.info("Simulation started at %s", str(start_time))
-    sweeps = {} if sweeps is None else sweeps
-    dims = [len(sweep_values) for sweep_values in sweeps.values()]
+    sweeps_std_form = {} if sweeps is None else convert_sweeps_to_standard_form(sweeps)
+    dims = [len(sweep_values) for sweep_values in sweeps_std_form.values()]
 
     N_tot = int(np.prod(dims))  # pylint: disable=invalid-name
     logger.info("Sweep dimensions: %s.", str(dims))
@@ -226,7 +233,7 @@ def run(
         _simulation_loop_body,
         settings=settings,
         dims=dims,
-        sweeps=sweeps,
+        sweeps=sweeps_std_form,
         pre_processing_in_the_loop=pre_process_in_loop,
         post_processing_in_the_loop=post_process_in_loop,
         task=simulation_task,
@@ -248,6 +255,10 @@ def run(
         for ii in tqdm.tqdm(range(N_tot)):
             output = simulation_loop_body_partial(ii)
             output_array[ii] = output
+
+    new_coords: DataCoordinatesType = {}
+    if post_process_after_loop:
+        new_coords.update(post_process_after_loop(settings, sweeps_std_form))
     end_time = datetime.datetime.now()
     logger.info(
         "Simulation finished at %s. The duration of the simulation was %s.",
@@ -255,7 +266,12 @@ def run(
         str(end_time - start_time),
     )
     dataset = _create_dataset(
-        output_array, settings, sweeps, expand_data=expand_data, dims=dims
+        output_array,
+        settings,
+        sweeps_std_form,
+        data_coordinates=new_coords,
+        expand_data=expand_data,
+        dims=dims,
     )
     simulation_result = SimulationResult(dataset)
     return simulation_result
@@ -264,18 +280,22 @@ def run(
 def _create_dataset(
     output_array: Any,
     settings: Settings,
-    sweeps: dict[Union[str, Setting], Any],
+    sweeps: SweepsStandardType,
+    data_coordinates: DataCoordinatesType,
     expand_data,
     dims,
 ) -> xr.Dataset:
     """
     Creates xarray dataset from simulation results.
+
+    Args:
+        data_coordinates: dict of data coordinate names and their additional sweeps.
     """
-    # pylint: disable=too-many-branches,too-many-statements
-    coords = {
-        setting.name if isinstance(setting, Setting) else setting: data
-        for setting, data in sweeps.items()
-    }
+    # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+    coords = convert_sweeps_to_standard_form(sweeps)
+    data_coordinates_std_form = convert_data_coordinates_to_standard_form(
+        data_coordinates
+    )
     dataset: xr.Dataset
 
     data_vars: dict[str, Any] = {}
@@ -287,13 +307,14 @@ def _create_dataset(
         for key in output_array[0]:
             temporary_array[key].append(value[key])
     for key in output_array[0]:
-        new_shape = np.array(temporary_array[key]).shape[1:]
+        data_as_array = np.array(temporary_array[key])
+        new_shape = data_as_array.shape[1:]
         if isinstance(dims, int):
             new_dims = [dims]
         else:
             new_dims = dims.copy()
         new_dims.extend(new_shape)
-        temporary_array[key] = np.reshape(np.array(temporary_array[key]), new_dims)
+        temporary_array[key] = np.reshape(data_as_array, new_dims)
 
     expanded_output = temporary_array
     output_array = expanded_output["output"]
@@ -361,10 +382,17 @@ def _create_dataset(
             f"index_{ii}" for ii in range(len(output_array_reshaped.shape) - len(dims))
         )
         data_vars["data"] = (tuple(extended_coords), output_array_reshaped)
-
     for setting_name, value in relation_dict.items():
         data_vars[setting_name] = (tuple(coords), value)
 
+    for data_var in data_vars:  # pylint: disable=consider-using-dict-items
+        if data_var in data_coordinates_std_form:
+            new_mapping = (
+                data_vars[data_var][0]
+                + tuple(data_coordinates_std_form[data_var].keys()),
+                data_vars[data_var][1],
+            )
+            data_vars[data_var] = new_mapping
     dataset = xr.Dataset(
         data_vars=data_vars, coords=coords, attrs={"settings": settings}
     )

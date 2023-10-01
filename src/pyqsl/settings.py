@@ -111,8 +111,8 @@ class Settings:
 
     An empty ``Settings`` object is created as  ``settings = pyqsl.Settings()``.
     In order to add a setting for a parameter, one can do either of the following:
-    * ``settings.a = 2``
-    * ``a = Setting('a', 2); settings.a = a
+    *  ``settings.a = 2``
+    *  ``a = Setting('a', 2); settings.a = a``
 
     The setting values can be accessed as ``settings['a']`` or ``settings.a``.
     The Setting objects can contain relations, which need to be resolved before

@@ -2,15 +2,18 @@
 Simulates a cross resonance gate between two qubits.
 
 Antti Vepsalainen, 2019
-"""
 
+Updated on 2023.
+"""
 import logging
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 from qutip import *
 
-# from pyqsl import core
-import pyqsl.core as pyqsl
+import pyqsl
+import matplotlib.pyplot as plt
 
 w0 = 5.5  # QB0 freq
 w1 = 6  # QB1 freq
@@ -41,27 +44,29 @@ output_list = [
 ]
 
 # These parameres are swept in the loop.
-sweep_arrays = {"wd0": np.linspace(5.8, 6.2, 511)}
+sweep_arrays = {"wd0": np.linspace(5.8, 6.2, 51)}
 
 # This dictionary contains all the other parameters.
-params = {
-    "w0": w0,
-    "w1": w1,
-    "a0": a0,
-    "a1": a1,
-    "g01": g01,
-    "wd0": wd0,
-    "wd1": wd1,
-    "Ad0": Ad0,
-    "Ad1": Ad1,
-    "nq0": nq0,
-    "nq1": nq1,
-    "gamma_0": gamma_0,
-    "gamma_1": gamma_1,
-    "tlist": tlist,
-    "psi0": psi0,
-    "output_list": output_list,
-}
+settings = pyqsl.Settings()
+settings.w0 = w0
+settings.w1 = w1
+settings.a0 = a0
+settings.a1 = a1
+settings.g01 = g01
+settings.wd0 = wd0
+settings.wd0.unit = "GHz"
+settings.wd1 = wd1
+settings.wd1.unit = "GHz"
+settings.Ad0 = Ad0
+settings.Ad1 = Ad1
+settings.nq0 = nq0
+settings.nq1 = nq1
+settings.gamma_0 = gamma_0
+settings.gamma_1 = gamma_1
+settings.tlist = tlist
+settings.tlist.unit = "ns"
+settings.psi0 = psi0
+settings.output_list = output_list
 
 
 def w0_coeff(t, args):
@@ -91,74 +96,79 @@ def get_empty(n):
     return Qobj(op)
 
 
-def create_hamiltonian(params, *args, **kwargs):
+def create_hamiltonian(s):
     """Prepares the Hamiltonian in the system in Qutip format. Needs to be recalculated at every step in the loop."""
-    params["H"] = (
+    s.H = (
         tensor(
-            get_n_level_spec(params["w0"], params["a0"], params["nq0"]),
-            identity(params["nq1"]),
+            get_n_level_spec(s.w0.value, s.a0.value, s.nq0.value),
+            identity(s.nq1.value),
         )
         + tensor(
-            identity(params["nq0"]),
-            get_n_level_spec(params["w1"], params["a1"], params["nq1"]),
+            identity(s.nq0.value),
+            get_n_level_spec(s.w1.value, s.a1.value, s.nq1.value),
         )
-        + params["g01"]
+        + s.g01.value
         * (
-            tensor(create(params["nq0"]), destroy(params["nq1"]))
-            + tensor(destroy(params["nq0"]), create(params["nq1"]))
+            tensor(create(s.nq0.value), destroy(s.nq1.value))
+            + tensor(destroy(s.nq0.value), create(s.nq1.value))
         )
     )
-    params["c_ops"] = [
-        np.sqrt(params["gamma_0"])
-        * tensor(destroy(params["nq0"]), identity(params["nq1"])),
-        np.sqrt(params["gamma_1"])
-        * tensor(identity(params["nq0"]), destroy(params["nq1"])),
+    s.c_ops = [
+        np.sqrt(s.gamma_0.value) * tensor(destroy(s.nq0.value), identity(s.nq1.value)),
+        np.sqrt(s.gamma_1.value) * tensor(identity(s.nq0.value), destroy(s.nq1.value)),
     ]
-    params["H1_0"] = params["Ad0"] * tensor(
-        create(params["nq0"]) + destroy(params["nq0"]), identity(params["nq1"])
+    s.H1_0 = s.Ad0.value * tensor(
+        create(s.nq0.value) + destroy(s.nq0.value), identity(s.nq1.value)
     )
-    params["H1_1"] = params["Ad1"] * tensor(
-        identity(params["nq0"]), create(params["nq1"]) + destroy(params["nq1"])
+    s.H1_1 = s.Ad1.value * tensor(
+        identity(s.nq0.value), create(s.nq1.value) + destroy(s.nq1.value)
     )
-    params["w0_coeff"] = w0_coeff
-    params["w1_coeff"] = w1_coeff
+    s.w0_coeff = w0_coeff
+    s.w1_coeff = w1_coeff
 
 
-def task(params, *args, **kwargs):
+def add_tlist_as_sweep(settings, sweeps):
+    return {
+        f"q{ii}": {"tlist": settings.tlist.value}
+        for ii in range(len(settings.output_list.value))
+    }
+
+
+def task(H, H1_0, H1_1, w0_coeff, w1_coeff, psi0, tlist, c_ops, output_list, wd0, wd1):
     """
     Uses the qutip Lindblad equation solver to calcualte the time-evolution of the time-dependent Hamiltonian.
     """
     output_temp = mesolve(
         [
-            params["H"],
-            [params["H1_0"], params["w0_coeff"]],
-            [params["H1_1"], params["w1_coeff"]],
+            H,
+            [H1_0, w0_coeff],
+            [H1_1, w1_coeff],
         ],
-        params["psi0"],
-        params["tlist"],
-        params["c_ops"],
-        params["output_list"],
-        args={"wd0": params["wd0"], "wd1": params["wd1"]},
+        psi0,
+        tlist,
+        c_ops,
+        output_list,
+        args={"wd0": wd0, "wd1": wd1},
     )
     output = {}
-    for ii in range(len(params["output_list"])):
-        output["q" + str(ii)] = (output_temp.expect[ii], ("tlist", params["tlist"]))
+    for ii in range(len(output_list)):
+        output["q" + str(ii)] = output_temp.expect[ii]
     return output
 
 
-output = pyqsl.simulation_loop(
-    params,
+output = pyqsl.run(
     task,
-    sweep_arrays=sweep_arrays,
-    pre_processing_in_the_loop=create_hamiltonian,
+    settings,
+    sweeps=sweep_arrays,
+    pre_process_in_loop=create_hamiltonian,
+    post_process_after_loop=add_tlist_as_sweep,
     parallelize=True,
 )
-pyqsl.save_data_hdf5(
-    "cross_resonance",
-    output,
-    params,
-    sweep_arrays,
-    [],
-    use_date_directory_structure=False,
-    overwrite=False,
-)
+##
+plt.pcolor(output.tlist, output.wd0, output.q0)
+plt.colorbar()
+plt.xlabel(f"{output.settings.tlist.name} ({output.settings.tlist.unit})")
+plt.ylabel(f"{output.settings.wd0.name} ({output.settings.wd0.unit})")
+plt.show()
+##
+output.save("cross_resonance.pickle")

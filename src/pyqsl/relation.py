@@ -176,13 +176,15 @@ class LookupTable(Relation):
         coordinates:
 
     Examples:
-    ```LookupTable(data=[4, 0, 4], coordinates={'x': [-2, 0, 2]})```
+    ``LookupTable(data=[4, 0, 4], coordinates={'x': [-2, 0, 2]})``
 
-    ```LookupTable(data=[4, 0, 4], coordinates={'x': [-2, 0, 2]}, parameters={'x': 'amplitude')```
+    ``LookupTable(data=[4, 0, 4], coordinates={'x': [-2, 0, 2]}, parameters={'x': 'amplitude')``
 
-    ```LookupTable(
+    ``
+        LookupTable(
         data=np.ones(3,2), coordinates={'x': [-2, 0, 2], 'y': [0, 1]}, parameters={'x': 'amplitude', 'y': 'frequency'
-        )```
+        )
+    ``
     """
 
     data: Any = None
