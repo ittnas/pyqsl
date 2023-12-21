@@ -38,6 +38,11 @@ def adjust_settings(settings: pyqsl.Settings):
     settings.c = 3.0
 
 
+def task_with_settings_as_input(settings: pyqsl.Settings):
+    settings_as_namespace = settings.to_namespace()
+    return settings_as_namespace.a * settings_as_namespace.b
+
+
 def update_output(output, settings):
     return {"result": output}
 
@@ -212,3 +217,8 @@ def test_get_invalid_args():
     assert pyqsl.core._get_invalid_args(task2, args) == set()
     assert pyqsl.core._get_invalid_args(task3, args) == set()
     assert pyqsl.core._get_invalid_args(task4, args) == {"c", "b"}
+
+
+def test_settings_as_task_argument(ab_settings):
+    result = pyqsl.run(task_with_settings_as_input, ab_settings)
+    assert result.data == 6

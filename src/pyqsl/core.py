@@ -62,6 +62,8 @@ def _simulation_loop_body(
     valid_settings = {
         key: settings_dict[key] for key in settings_dict if key not in invalid_args
     }
+    if _settings_in_args(task):
+        valid_settings["settings"] = settings
     output = task(**valid_settings)
 
     if post_processing_in_the_loop:
@@ -101,7 +103,9 @@ def run(
     The other input arguments for the function can be provided using the settings keyword argument.
 
     For example, if the task function has input arguments ``a`` and ``b``, the values ``settings.a`` and
-    ``settings.b`` will be used to fetch their values.
+    ``settings.b`` will be used to fetch their values. Alternatively, if task-function has argument
+    called ``settings``, the values of all the settings can be accessed through that variable.
+
     Sweeping the value of input argument ``a`` for example from 0 to 2 can be accomplished by defining a
     sweep in ``sweeps = {'a': [0, 1, 2]}``. The values of different settings can also depend on each other
     through relations, see documentation for ``Settings`` for additional details.
@@ -409,3 +413,11 @@ def _get_invalid_args(func, argdict):
     if varkw:
         return set()  # All accepted
     return set(argdict) - set(args)
+
+
+def _settings_in_args(func) -> bool:
+    """
+    Checks if settings is in function arguments.
+    """
+    args, _, _, _, _, _, _ = inspect.getfullargspec(func)
+    return "settings" in args

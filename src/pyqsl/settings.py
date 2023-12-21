@@ -9,6 +9,7 @@ Classes:
 from __future__ import annotations
 
 import dataclasses
+import types
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
@@ -182,6 +183,12 @@ class Settings:
             Dictionary containing the setting names as keys and setting values as values.
         """
         return {setting.name: setting.value for setting in self}
+
+    def to_namespace(self) -> types.SimpleNamespace:
+        """
+        Converts settings to SimpleNamespace with setting values as attributes.
+        """
+        return types.SimpleNamespace(**self.to_dict())
 
     def __iter__(self):
         yield from self._fields.values()
