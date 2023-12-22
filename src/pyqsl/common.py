@@ -25,11 +25,17 @@ def convert_sweeps_to_standard_form(
 
     Returns:
         A soft copy of sweeps in new format.
+
+    Raises:
+        ValueError if any name for a sweep is None.
     """
-    return {
-        key.name if isinstance(key, Setting) else key: value
-        for key, value in sweeps.items()
-    }
+    names = [key.name if isinstance(key, Setting) else key for key in sweeps.keys()]
+    if any(name is None for name in names):
+        raise ValueError("Name for a sweep parameter must not be None.")
+
+    # Tell mypy that there are no Nones
+    names_without_none = [name for name in names if name is not None]
+    return dict(zip(names_without_none, sweeps.values()))
 
 
 def convert_data_coordinates_to_standard_form(
@@ -43,10 +49,15 @@ def convert_data_coordinates_to_standard_form(
 
     Returns:
         A soft copy of data_coordinates in new format.
+
+    Raises:
+        ValueError if name for data coordinate is None.
     """
     new_data_coordinates = {}
     for key, value in data_coordinates.items():
         new_key = key.name if isinstance(key, Setting) else key
+        if new_key is None:
+            raise ValueError("Name for a data coordiante must not be None.")
         new_value = convert_sweeps_to_standard_form(value)
         new_data_coordinates[new_key] = new_value
     return new_data_coordinates

@@ -59,10 +59,10 @@ class Setting:
     __rmul__ = __mul__
 
     def __pow__(self, other):
-        return self.value ** other
+        return self.value**other
 
     def __rpow__(self, other):
-        return other ** self.value
+        return other**self.value
 
     def __truediv__(self, other):
         return self.value / other
@@ -109,11 +109,6 @@ class Setting:
 
     __rxor__ = __xor__
 
-    def __invert__(self):
-        return ~self.value
-
-    __rinvert__ = __invert__
-
     def __lt__(self, other):
         return self.value < other
 
@@ -127,8 +122,8 @@ class Setting:
     def __ne__(self, other):
         if isinstance(other, str):
             return self.name != other
-        return self.name != other.name
-
+        if isinstance(other, Setting):
+            return self.name != other.name
         return self.value > other
 
     def __le__(self, other):
@@ -147,10 +142,9 @@ class Setting:
     def __eq__(self, other):
         if isinstance(other, str):
             return self.name == other
-        elif isinstance(other, Setting):
+        if isinstance(other, Setting):
             return self.name == other.name
-        else:
-            return self.value == other
+        return self.value == other
 
     def has_active_relation(self) -> bool:
         """

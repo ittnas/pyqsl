@@ -20,8 +20,8 @@ def test_create_setting_with_no_name():
     empty_setting = pyqsl.Setting(unit="Hz")
     assert empty_setting.value is None
     assert empty_setting.name is None
-    empty_setting.name = 'frequency'
-    assert empty_setting.name == 'frequency'
+    empty_setting.name = "frequency"
+    assert empty_setting.name == "frequency"
 
 
 def test_create_settings():
@@ -37,7 +37,7 @@ def test_create_settings():
 
     setting_with_no_name = pyqsl.Setting()
     settings.frequency = setting_with_no_name
-    assert settings.frequency.name == 'frequency'
+    assert settings.frequency.name == "frequency"
 
 
 def test_overloading_add():
@@ -55,11 +55,10 @@ def test_overloading_other_operators():
     settings.b = 2
     settings.c = 0.5
 
-    settings.c = settings.a - settings.b
-    assert settings.c == 3
+    assert (settings.a - settings.b) == (settings.a.value - settings.b.value)
     settings.c = settings.a * settings.b
     assert settings.c == 10
-    settings.c = settings.a ** settings.b
+    settings.c = settings.a**settings.b
     assert settings.c == 25
     settings.c = settings.a / settings.b
     assert settings.c == 2.5
@@ -77,16 +76,12 @@ def test_overloading_other_operators():
     assert settings.c == 7
     settings.c = settings.a ^ settings.b
     assert settings.c == 7
-    settings.c = ~settings.a
-    assert settings.c == -6
     settings.c = settings.a > settings.b
     assert settings.c
-    settings.c = settings.a < settings.b
-    assert ~settings.c
+    assert (settings.a < settings.b) == (settings.a.value < settings.b.value)
     settings.c = settings.a >= settings.b
     assert settings.c
     settings.c = settings.a <= settings.b
-    assert ~settings.c
 
 
 def test_adding_setting_with_wrong_name():

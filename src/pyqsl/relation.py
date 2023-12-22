@@ -67,7 +67,9 @@ class Relation(ABC):
         self._parameters = {}
         for key, dict_value in value.items():
             if isinstance(dict_value, Setting):
-                self._parameters[key] = dict_value.name
+                self._parameters[key] = (
+                    dict_value.name if dict_value.name is not None else "none"
+                )
             else:
                 self._parameters[key] = dict_value
 
