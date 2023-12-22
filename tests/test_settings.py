@@ -109,6 +109,9 @@ def test_relation_property(settings):
     assert settings.amplitude.use_relation is False
     settings.amplitude.relation = pyqsl.Equation(equation="a+1")
     assert settings.amplitude.use_relation is True
+    # And reverse
+    settings.amplitude = 5
+    assert settings.amplitude.use_relation is False
 
 
 def test_getitem(settings):

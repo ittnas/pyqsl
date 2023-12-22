@@ -264,6 +264,7 @@ class Settings:
                 super().__setattr__(name, value)
             elif name in self:
                 self[name].value = value
+                self[name].use_relation = False
             else:
                 setting = Setting(name, value)
                 self._fields[setting.name] = setting
