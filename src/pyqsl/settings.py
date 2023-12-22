@@ -32,8 +32,8 @@ class Setting:
     value of the relation instead (``self.relation.evaluated_value``).
     """
 
-    name: str
-    value: Any
+    name: Optional[str] = None
+    value: Optional[Any] = None
     unit: str = ""
     relation: Optional["Relation"] = None
     use_relation: bool = False
@@ -47,13 +47,110 @@ class Setting:
 
     __radd__ = __add__
 
+    def __sub__(self, other):
+        return self.value - other
+
+    def __rsub__(self, other):
+        return other - self.value
+
+    def __mul__(self, other):
+        return self.value * other
+
+    __rmul__ = __mul__
+
+    def __pow__(self, other):
+        return self.value ** other
+
+    def __rpow__(self, other):
+        return other ** self.value
+
+    def __truediv__(self, other):
+        return self.value / other
+
+    def __rtruediv__(self, other):
+        return other / self.value
+
+    def __floordiv__(self, other):
+        return self.value // other
+
+    def __rfloordiv__(self, other):
+        return other // self.value
+
+    def __mod__(self, other):
+        return self.value % other
+
+    def __rmod__(self, other):
+        return other % self.value
+
+    def __lshift__(self, other):
+        return self.value << other
+
+    def __rlshift__(self, other):
+        return other << self.value
+
+    def __rshift__(self, other):
+        return self.value >> other
+
+    def __rrshift__(self, other):
+        return other >> self.value
+
+    def __and__(self, other):
+        return self.value & other
+
+    __rand__ = __and__
+
+    def __or__(self, other):
+        return self.value | other
+
+    __ror__ = __or__
+
+    def __xor__(self, other):
+        return self.value ^ other
+
+    __rxor__ = __xor__
+
+    def __invert__(self):
+        return ~self.value
+
+    __rinvert__ = __invert__
+
+    def __lt__(self, other):
+        return self.value < other
+
+    __rlt__ = __lt__
+
+    def __gt__(self, other):
+        return self.value > other
+
+    __rgt__ = __gt__
+
+    def __ne__(self, other):
+        if isinstance(other, str):
+            return self.name != other
+        return self.name != other.name
+
+        return self.value > other
+
+    def __le__(self, other):
+        return self.value <= other
+
+    __rle__ = __le__
+
+    def __ge__(self, other):
+        return self.value >= other
+
+    __rge__ = __ge__
+
     def __hash__(self):
         return hash(self.name)
 
     def __eq__(self, other):
         if isinstance(other, str):
             return self.name == other
-        return self.name == other.name
+        elif isinstance(other, Setting):
+            return self.name == other.name
+        else:
+            return self.value == other
 
     def has_active_relation(self) -> bool:
         """
@@ -160,6 +257,8 @@ class Settings:
             ValueError if trying to add a new setting which name is different from the attribute name.
         """
         if isinstance(value, Setting):
+            if value.name is None:
+                value.name = name
             if value.name != name:
                 raise ValueError(
                     f"Setting name ({value.name}) has to be equal to Settings field name ({name})."

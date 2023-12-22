@@ -7,9 +7,6 @@ import pyqsl
 
 
 def test_create_setting():
-    with pytest.raises(TypeError):
-        setting = pyqsl.Setting()
-
     empty_setting = pyqsl.Setting("frequency", unit="Hz")
     assert empty_setting.value is None
     setting = pyqsl.Setting("amplitude", 4)
@@ -17,6 +14,14 @@ def test_create_setting():
     assert setting.value == 4
     assert setting.unit == "V"
     assert setting.name == "amplitude"
+
+
+def test_create_setting_with_no_name():
+    empty_setting = pyqsl.Setting(unit="Hz")
+    assert empty_setting.value is None
+    assert empty_setting.name is None
+    empty_setting.name = 'frequency'
+    assert empty_setting.name == 'frequency'
 
 
 def test_create_settings():
@@ -30,6 +35,10 @@ def test_create_settings():
     settings.amplitude = 5
     assert settings.amplitude.value == 5
 
+    setting_with_no_name = pyqsl.Setting()
+    settings.frequency = setting_with_no_name
+    assert settings.frequency.name == 'frequency'
+
 
 def test_overloading_add():
     settings = pyqsl.Settings()
@@ -38,6 +47,46 @@ def test_overloading_add():
     assert settings.amplitude + 3 == 8
     assert settings.amplitude + settings.amplitude == 10
     assert settings.amplitude + settings.amplitude != 9
+
+
+def test_overloading_other_operators():
+    settings = pyqsl.Settings()
+    settings.a = 5
+    settings.b = 2
+    settings.c = 0.5
+
+    settings.c = settings.a - settings.b
+    assert settings.c == 3
+    settings.c = settings.a * settings.b
+    assert settings.c == 10
+    settings.c = settings.a ** settings.b
+    assert settings.c == 25
+    settings.c = settings.a / settings.b
+    assert settings.c == 2.5
+    settings.c = settings.a // settings.b
+    assert settings.c == 2
+    settings.c = settings.a % settings.b
+    assert settings.c == 1
+    settings.c = settings.a << settings.b
+    assert settings.c == 20
+    settings.c = settings.a >> settings.b
+    assert settings.c == 1
+    settings.c = settings.a & settings.b
+    assert settings.c == 0
+    settings.c = settings.a | settings.b
+    assert settings.c == 7
+    settings.c = settings.a ^ settings.b
+    assert settings.c == 7
+    settings.c = ~settings.a
+    assert settings.c == -6
+    settings.c = settings.a > settings.b
+    assert settings.c
+    settings.c = settings.a < settings.b
+    assert ~settings.c
+    settings.c = settings.a >= settings.b
+    assert settings.c
+    settings.c = settings.a <= settings.b
+    assert ~settings.c
 
 
 def test_adding_setting_with_wrong_name():
