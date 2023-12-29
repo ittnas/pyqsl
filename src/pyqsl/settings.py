@@ -146,6 +146,9 @@ class Setting:
             return self.name == other.name
         return self.value == other
 
+    def __getitem__(self, key):
+        return self.value[key]
+
     def has_active_relation(self) -> bool:
         """
         Returns True if relation is not None and use_relation is True.

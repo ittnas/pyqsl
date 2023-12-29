@@ -146,3 +146,14 @@ def test_copy():
     assert copied.a.value[0] == settings.a.value[0]
     assert copied.c.relation is None
     assert settings.c.relation is not None
+
+
+def test_indexing():
+    settings = pyqsl.Settings()
+    settings.a = [0, 1, 2]
+    settings.b = 2
+    assert settings.a[0] == 0
+    assert settings.a.value[0] == settings.a[0]
+    assert settings.a[2] + settings.a[1] == 3
+    assert settings.b + settings.a[1] == 3
+    assert not settings.b.use_relation
