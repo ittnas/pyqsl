@@ -129,3 +129,20 @@ def test_setting_value(settings):
     assert settings.amplitude.unit == "V"
     settings.phase = 1.41
     assert settings.phase.value == 1.41
+
+
+def test_copy():
+    settings = pyqsl.Settings()
+    settings.a = [0]
+    settings.b = 1
+    settings.c = None
+    copied = settings.copy()
+    settings.c.relation = pyqsl.Equation(equation='b + 1')
+    assert copied.b.value == settings.b.value
+    copied.b = 2
+    assert copied.b.value != settings.b.value
+    assert copied.a.value[0] == settings.a.value[0]
+    settings.a.value[0] = 1
+    assert copied.a.value[0] == settings.a.value[0]
+    assert copied.c.relation is None
+    assert settings.c.relation is not None

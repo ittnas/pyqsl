@@ -332,6 +332,17 @@ class Settings:
                     relation_graph.add_edge(dependent_setting, setting.name)
         return relation_graph
 
+    def copy(self):
+        """
+        Creates a copy of self.
+
+        Indidivual Setting objects are copied but their values are not.
+        """
+        settings = Settings()
+        for setting in self:
+            setattr(settings, setting.name, dataclasses.replace(setting))
+        return settings
+
 
 def is_acyclic(graph: nx.DiGraph) -> bool:
     """
