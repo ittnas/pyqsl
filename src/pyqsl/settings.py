@@ -12,8 +12,10 @@ import dataclasses
 import types
 from dataclasses import dataclass
 from typing import Any, Optional, Union
+import logging
 
 import networkx as nx
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -306,6 +308,7 @@ class Settings:
         """
         # Build relation hierarchy
         relation_graph = self._build_relation_hierarchy()
+        nodes_with_relation = []
         if not is_acyclic(relation_graph):
             raise ValueError("Cyclic relations detected.")
         # Resolve values
@@ -314,8 +317,8 @@ class Settings:
             setting = self[node]
             if setting.has_active_relation():
                 setting.relation.resolve(self)
-        return nodes
-        #
+                nodes_with_relation.append(node)
+        return nodes_with_relation
 
     def _build_relation_hierarchy(self) -> nx.DiGraph:
         settings_with_active_relation = [

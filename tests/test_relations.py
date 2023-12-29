@@ -179,3 +179,15 @@ def test_nested_lookup_and_equation(settings):
     settings.amplitude.relation = eq
     settings.resolve_relations()
     assert pytest.approx(settings.amplitude.value) == 1.2
+
+
+def test_nodes_with_relation_is_correct():
+    settings = pyqsl.Settings()
+    settings.a = 1
+    settings.b = 2
+    settings.c = None
+    settings.c.relation = pyqsl.Equation(equation='a+b')
+    nodes_with_relation = settings.resolve_relations()
+    assert settings.c.name in nodes_with_relation
+    assert settings.a.name not in nodes_with_relation
+    assert settings.b.name not in nodes_with_relation
