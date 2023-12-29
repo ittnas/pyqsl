@@ -307,7 +307,7 @@ class Settings:
             ValueError if cyclic relations
         """
         # Build relation hierarchy
-        relation_graph = self._build_relation_hierarchy()
+        relation_graph = self.get_relation_hierarchy()
         nodes_with_relation = []
         if not is_acyclic(relation_graph):
             raise ValueError("Cyclic relations detected.")
@@ -320,7 +320,10 @@ class Settings:
                 nodes_with_relation.append(node)
         return nodes_with_relation
 
-    def _build_relation_hierarchy(self) -> nx.DiGraph:
+    def get_relation_hierarchy(self) -> nx.DiGraph:
+        """
+        Returns a directed graph describing the dependencies between relations.
+        """
         settings_with_active_relation = [
             setting for setting in self if setting.has_active_relation()
         ]

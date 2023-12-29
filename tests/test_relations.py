@@ -33,14 +33,14 @@ def test_equation_evaluation():
 
 
 def test_build_relation_hierarchy(settings_with_relations):
-    graph = settings_with_relations._build_relation_hierarchy()
+    graph = settings_with_relations.get_relation_hierarchy()
     assert set(graph.nodes) == set(["a", "b", "c", "e"])
     assert set(graph.edges) == {("a", "e"), ("b", "a"), ("c", "a"), ("c", "b")}
 
 
 def test_that_self_reference_is_not_added(settings_with_relations):
     settings_with_relations.d.relation = "d"
-    graph = settings_with_relations._build_relation_hierarchy()
+    graph = settings_with_relations.get_relation_hierarchy()
     assert set(graph.nodes) == set(["a", "b", "c", "e", "d"])
     assert set(graph.edges) == {("a", "e"), ("b", "a"), ("c", "a"), ("c", "b")}
 
@@ -51,10 +51,10 @@ def test_is_acyclic():
     settings.b = 2
     settings.a.relation = "b"
     settings.b.relation = "a"
-    graph = settings._build_relation_hierarchy()
+    graph = settings.get_relation_hierarchy()
     assert pyqsl.settings.is_acyclic(graph) is False
     settings.b.relation = None
-    graph = settings._build_relation_hierarchy()
+    graph = settings.get_relation_hierarchy()
     assert pyqsl.settings.is_acyclic(graph) is True
 
 
@@ -100,7 +100,7 @@ def test_build_relation_hierarchy_with_nested_equations():
     eq1 = pyqsl.Equation(equation="a+1")
     eq2 = pyqsl.Equation(equation="b+p1", parameters={"p1": eq1})
     settings.c.relation = eq2
-    graph = settings._build_relation_hierarchy()
+    graph = settings.get_relation_hierarchy()
     assert set(graph.nodes) == set(["a", "b", "c"])
 
 
