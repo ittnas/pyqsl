@@ -82,7 +82,7 @@ def convert_data_coordinates_to_standard_form(
     for key, value in data_coordinates.items():
         new_key = key.name if isinstance(key, Setting) else key
         if new_key is None:
-            raise ValueError("Name for a data coordiante must not be None.")
+            raise ValueError("Name for a data coordinate must not be None.")
         new_value = convert_sweeps_to_standard_form(value)
         new_data_coordinates[new_key] = new_value
     return new_data_coordinates
