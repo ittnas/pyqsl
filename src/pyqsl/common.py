@@ -3,6 +3,7 @@ Definitions used by more than one other module.
 """
 import logging
 from typing import Any, Sequence
+import numpy as np
 
 from pyqsl.settings import Setting
 
@@ -20,6 +21,9 @@ def convert_sweeps_to_standard_form(
     """
     Converts sweeps from form that can contain settings to standard form that only has settings names.
 
+    Additionally, ensures that conversion to numpy array does not add extra dimensions. This is required
+    for using the sweep as a coordinate for xarray.
+
     Args:
         sweeps: Sweeps dictionary which keys can either be setting or setting name.
 
@@ -35,7 +39,28 @@ def convert_sweeps_to_standard_form(
 
     # Tell mypy that there are no Nones
     names_without_none = [name for name in names if name is not None]
-    return dict(zip(names_without_none, sweeps.values()))
+    new_sweep_values = []
+
+    for sweep_values in sweeps.values():
+        ii = 0
+        for _ in sweep_values:
+            ii += 1
+        correct_shape = True
+        try:
+            array_size = np.array(sweep_values).size
+            if array_size != ii:
+                correct_shape = False
+        except ValueError:
+            correct_shape = False
+        if not correct_shape:
+            cast_shape = np.zeros((ii, ), dtype='O')
+            for jj, value in enumerate(sweep_values):
+                logger.debug(value)
+                cast_shape[jj] = value
+            new_sweep_values.append(cast_shape)
+        else:
+            new_sweep_values.append(sweep_values)
+    return dict(zip(names_without_none, new_sweep_values))
 
 
 def convert_data_coordinates_to_standard_form(

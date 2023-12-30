@@ -341,6 +341,24 @@ class Settings:
                     relation_graph.add_edge(dependent_setting, setting.name)
         return relation_graph
 
+    def get_dependent_setting_names(self, setting: Setting, relation_hierarchy: Optional[nx.DiGraph]=None) -> list[str]:
+        """
+        Returns the names for settings dependent on the given setting.
+
+        Args:
+            setting: Setting for which dependent settings are searched for.
+            relation_hierarchy: Relation hierarchy for the settings tree. If None, a new hierarchy is built.
+
+        Returns:
+            List of all settings depending on the given setting.
+        """
+        if relation_hierarchy is None:
+            relation_hierarchy = self.get_relation_hierarchy()
+        if setting.name not in relation_hierarchy:
+            return []
+        descendants = nx.descendants(relation_hierarchy, setting.name)
+        return sorted(descendants)
+
     def copy(self):
         """
         Creates a copy of self.
