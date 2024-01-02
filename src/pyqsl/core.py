@@ -10,6 +10,7 @@ import logging
 import multiprocessing as mp
 from functools import partial
 from typing import Any, Callable, Optional
+import collections
 
 import numpy as np
 import psutil
@@ -35,13 +36,14 @@ def _simulation_loop_body(
     settings: Settings,
     dims,
     sweeps: SweepsStandardType,
-    pre_processing_in_the_loop,
-    post_processing_in_the_loop,
+    pre_process_in_loop,
+    post_processs_in_loop,
     task,
-):
+) -> dict[str, Any]:
     # The main loop
     # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
-    settings = copy.deepcopy(settings)
+    original_settings = settings
+    settings = copy.deepcopy(original_settings)
     # settings_dict = settings.to_dict()
     current_ind = np.unravel_index(ii, dims)
     sweep_array_index = 0
@@ -50,8 +52,8 @@ def _simulation_loop_body(
         setattr(settings, sweep_name, value[int(current_ind[sweep_array_index])])
         sweep_array_index = sweep_array_index + 1
 
-    if pre_processing_in_the_loop:
-        pre_processing_in_the_loop(settings)
+    if pre_process_in_loop:
+        pre_process_in_loop(settings)
 
         # params_private now contains all the required information to run the simulation
     # Resolve relations
@@ -66,8 +68,33 @@ def _simulation_loop_body(
         valid_settings["settings"] = settings
     output = task(**valid_settings)
 
-    if post_processing_in_the_loop:
-        output = post_processing_in_the_loop(output, settings)
+    if post_processs_in_loop:
+        output = post_processs_in_loop(output, settings)
+
+    # If any setting has been changed, add as a result.
+    if isinstance(output, Settings):
+        new_output = {}
+        for setting in output:
+            name = setting.name
+            if name is None:
+                continue
+            if setting not in original_settings:
+                new_output[name] = setting.value
+                continue
+            comparison = False
+            try:
+                comparison = setting.value != original_settings[name].value
+                if comparison:
+                    pass
+            except Exception:
+                try:
+                    comparison = (setting.value != original_settings[name].value).any()
+                except Exception:
+                    pass
+
+            if comparison:
+                new_output[name] = setting.value
+        output = new_output
 
     output_as_dict = {
         "output": output,
@@ -238,8 +265,8 @@ def run(
         settings=settings,
         dims=dims,
         sweeps=sweeps_std_form,
-        pre_processing_in_the_loop=pre_process_in_loop,
-        post_processing_in_the_loop=post_process_in_loop,
+        pre_process_in_loop=pre_process_in_loop,
+        post_processs_in_loop=post_process_in_loop,
         task=simulation_task,
     )
     if parallelize:
@@ -297,111 +324,189 @@ def _create_dataset(
     """
     # pylint: disable=too-many-branches,too-many-statements,too-many-locals
     coords = convert_sweeps_to_standard_form(sweeps)
+    logger.debug(coords)
     data_coordinates_std_form = convert_data_coordinates_to_standard_form(
         data_coordinates
     )
+    # output_array:
+    # [prod(Dsweeps), dict['output': dict[Doutput], 'settings_with_relations': 'dict']
+    
+    # reshaped_array:
+    # [Dsweeps, dict['output': dict[Doutput], 'settings_with_relations': 'dict']
+    reshaped_array = np.reshape(np.array(output_array, dtype=object), dims)
+    # Expand
+    reshaped_array_expanded = _expand_dict_from_data(reshaped_array)
+
     dataset: xr.Dataset
+    data_vars: dict[str, tuple[tuple[str, ...], Any]] = {}
+    extended_coords = copy.copy(coords)
+    # Add settings as variables
+    if len(dims):
+        _add_settings_as_variables(data_vars, settings, extended_coords, reshaped_array_expanded['settings_with_relations'], dims)
 
-    data_vars: dict[str, Any] = {}
-
-    temporary_array: dict[str, Any] = {}
-    for key in output_array[0]:
-        temporary_array[key] = []
-    for ii, value in enumerate(output_array):
-        for key in output_array[0]:
-            temporary_array[key].append(value[key])
-    for key in output_array[0]:
-        data_as_array = np.array(temporary_array[key])
-        new_shape = data_as_array.shape[1:]
-        if isinstance(dims, int):
-            new_dims = [dims]
-        else:
-            new_dims = dims.copy()
-        new_dims.extend(new_shape)
-        temporary_array[key] = np.reshape(data_as_array, new_dims)
-
-    expanded_output = temporary_array
-    output_array = expanded_output["output"]
-    relation_array = expanded_output["settings_with_relations"]
-    relation_dict: dict[str, Any]
-    if len(dims) == 0:
-        output_array_reshaped = output_array[()]
-        relation_dict = {
-            f"{key}_evaluated": value for key, value in relation_array[()].items()
-        }
-    else:
-        try:
-            output_array_reshaped = np.reshape(np.array(output_array), dims)
-        except ValueError:
-            output_array_reshaped = np.reshape(np.array(output_array), dims + [-1])
-        relation_dict = {}
-        for key in relation_array.flat[0]:
-            relation_dict[f"{key}_evaluated"] = []
-        for ii in range(relation_array.size):
-            for key_rd, key_ra in zip(
-                relation_dict.keys(), relation_array.flat[0].keys()
-            ):
-                relation_dict[key_rd].append(relation_array.flat[ii][key_ra])
-        for key, value in relation_dict.items():
-            new_shape = np.array(value).shape[1:]
-            new_dims = dims.copy()
-            new_dims.extend(new_shape)
-            relation_dict[key] = np.reshape(np.array(value), new_dims)
-
-    if expand_data:
-        if isinstance(output_array.flat[0], dict):
-            temporary_array = {}
-            for key in output_array.flat[0]:
-                temporary_array[key] = []
-            for ii in range(output_array.size):
-                for key in output_array.flat[0]:
-                    temporary_array[key].append(output_array.flat[ii][key])
-            for key in output_array.flat[0]:
-                new_shape = np.array(temporary_array[key]).shape[1:]
-                if isinstance(dims, int):
-                    new_dims = [dims]
-                else:
-                    new_dims = dims.copy()
-                new_dims.extend(new_shape)
-                temporary_array[key] = np.reshape(
-                    np.array(temporary_array[key]), new_dims
-                )
-            for key, value in temporary_array.items():
-                data_vars[key] = (tuple(coords), value)
-            # return temporary_array
-        elif output_array.shape != tuple(dims):
-            # Iterable that has been converted to np.array
-            for ii in range(len(dims)):
-                output_array_reshaped = np.moveaxis(output_array_reshaped, 0, -1)
-            extended_coords = tuple(
-                f"index_{ii}"
-                for ii in range(len(output_array_reshaped.shape) - len(dims))
-            ) + tuple(coords)
-            data_vars["data"] = (extended_coords, output_array_reshaped)
-        else:
-            # Fallback to default behaviour without expanding
-            data_vars["data"] = (tuple(coords), output_array_reshaped)
-    else:
-        extended_coords = tuple(coords) + tuple(
-            f"index_{ii}" for ii in range(len(output_array_reshaped.shape) - len(dims))
+    if not expand_data:
+        coord_names = tuple(coords) + tuple(
+            f"index_{ii}" for ii in range(len(reshaped_array_expanded['output'].shape) - len(dims))
         )
-        data_vars["data"] = (tuple(extended_coords), output_array_reshaped)
-    for setting_name, value in relation_dict.items():
-        data_vars[setting_name] = (tuple(coords), value)
-
-    for data_var in data_vars:  # pylint: disable=consider-using-dict-items
-        if data_var in data_coordinates_std_form:
-            new_mapping = (
-                data_vars[data_var][0]
-                + tuple(data_coordinates_std_form[data_var].keys()),
-                data_vars[data_var][1],
-            )
-            data_vars[data_var] = new_mapping
+        data_vars["data"] = (coord_names, reshaped_array_expanded['output'])
+    else:
+        # Check type from first element
+        logger.debug(f'reshaped_array.flat {reshaped_array.flat[0]}')
+        first_element = reshaped_array.flat[0]['output']
+        if isinstance(first_element, collections.abc.Mapping):
+            output_array_expanded = _expand_dict_from_data(reshaped_array_expanded['output'])
+            for key, value in output_array_expanded.items():
+                data_vars[key] = (tuple(coords), value)
+        elif isinstance(first_element, (collections.abc.Sequence, np.ndarray)) and (not isinstance(first_element, str)):
+            output_array_expanded = np.array(_expand_sequence_from_data(reshaped_array_expanded['output'], dims))
+            logger.debug(f'{output_array_expanded}, {output_array_expanded.shape}')
+            extended_coords['index'] = np.arange(output_array_expanded.size//np.prod(dims))
+            coord_names = ('index',) + tuple(coords)
+            coord_names = coord_names + tuple(f"dummy_{ii}" for ii in range(len(output_array_expanded.shape) - len(coord_names)))
+            logger.debug(f'{coord_names}, {len(output_array_expanded.shape)}, {len(coord_names)}')
+            data_vars["data"] = (coord_names, output_array_expanded)
+        else:
+            data_vars["data"] = (tuple(coords), reshaped_array_expanded['output'])
+    _add_dimensions_to_data_var(data_vars, settings, extended_coords, reshaped_array_expanded['settings_with_relations'], dims)
+    for data_var, entry in data_vars.items():
+        data_vars[data_var] = entry[0], entry[1], {'units': settings[data_var].unit if data_var in settings else ''}
+    for coord_name, entry in extended_coords.items():
+        extended_coords[coord_name] = xr.DataArray(entry, dims=(coord_name,), attrs={'units': settings[coord_name].unit if coord_name in settings else ''})
     dataset = xr.Dataset(
-        data_vars=data_vars, coords=coords, attrs={"settings": settings}
+        data_vars=data_vars, coords=extended_coords, attrs={"settings": settings}
     )
+    dataset = dataset.pint.quantify()
 
     return dataset
+
+
+def _add_settings_as_variables(data_vars: dict[str, tuple[tuple[str, ...], Any]], settings: Settings, sweeps: SweepsStandardType, setting_values, dims):
+    """
+    Adds settings with resolved relations as data variables.
+
+    Additionally, adds dimensions of all the settings as coordinates.
+    """
+    hierarchy = settings.get_relation_hierarchy()
+
+    # Map from setting names to setting names that define their dimensionality.
+    setting_dimension_map = {}
+    for setting_name in sweeps:
+        setting = settings[setting_name]
+        dependent_names = settings.get_dependent_setting_names(setting, hierarchy)
+        for dependent_name in dependent_names:
+            if dependent_name not in setting_dimension_map:
+                setting_dimension_map[dependent_name] = set()
+            setting_dimension_map[dependent_name].add(setting_name)
+    setting_values = _expand_dict_from_data(setting_values)
+    for dependent_name, sweep_names in setting_dimension_map.items():
+        new_slice = [0]*len(dims)
+        name_indices = []
+        for sweep_name in sweep_names:
+            name_index = list(sweeps.keys()).index(sweep_name)
+            name_indices.append(name_index)
+            new_slice[name_index] = slice(None)
+        sweep_names_in_order = [list(sweeps.keys())[index] for index in sorted(name_indices)]
+        logger.debug(f'{dependent_name}: {new_slice}')
+        sliced_values = setting_values[dependent_name][tuple(new_slice)]
+        logger.debug(f'{dependent_name}: {sliced_values}')
+        logger.debug(f'{dependent_name}: {sweep_names}')
+        data_vars[dependent_name] = (sweep_names_in_order, sliced_values)
+
+
+def _add_dimensions_to_data_var(data_vars: dict[str, tuple[tuple[str, ...], Any]], settings: Settings, sweeps: SweepsStandardType, setting_values, dims):
+    """
+    Adds settings with dimensions as data vars. Also adds dimensions to data_vars with names that align with settings.
+    """
+    # Add setting dimensions
+    for setting in settings:
+        if setting.dimensions:
+            for dimension in setting.dimensions:
+                if dimension in data_vars:
+                    logger.warning('Dimension %s of setting %s is varied, which is not allowed. Skipping dimension.'.format(dimension, setting.name))
+                sweeps.update(dict(zip(setting.dimensions, [settings[dimension].value for dimension in setting.dimensions])))
+            if setting.name not in data_vars:
+                data_vars[setting.name] = (setting.dimensions, setting.value)
+            else:
+                data_vars[setting.name] = (tuple(data_vars[setting.name][0]) + tuple(setting.dimensions), _vstack_and_reshape(data_vars[setting.name][1]))
+    logger.debug(data_vars)
+
+
+def _make_list_unique(seq):
+    """
+    Makes the list unique and ordered.
+
+    From https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order
+    """
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
+
+def _expand_dict_from_data(data: np.ndarray):
+    all_keys = []
+    for individual in data.flat:
+        all_keys.extend(list(individual.keys()))
+    keys = _make_list_unique(all_keys)
+    output = {}
+    for key in keys:
+        def value_for_key(dictionary):
+            if key in dictionary:
+                return dictionary[key]
+            else:
+                return np.NAN
+        func = np.vectorize(value_for_key, otypes=[object])
+        values = func(data)
+        output[key] = values
+    return output
+
+
+def _expand_sequence_from_data(data: np.ndarray, dims):
+    total_length = 0
+    if len(dims) == 0:
+        result = np.zeros((len(data),), dtype='O')
+        for ii, element in enumerate(data):
+            result[ii] = element
+        return result
+    for individual in data.flat:
+        try:
+            total_length = np.max([len(individual), total_length])
+        except TypeError:
+            # Scalar
+            pass
+    output = []
+    logger.debug(total_length)
+    for ii in range(total_length):
+        def value_for_index(sequence):
+            try:
+                if ii < len(sequence):
+                    return sequence[ii]
+                else:
+                    return np.NAN
+            except TypeError:
+                # Scalar
+                return np.NAN
+        func = np.vectorize(value_for_index, otypes=[object])
+        values = func(data)
+        logger.debug(values)
+        output.append(values)
+    return output
+
+
+def _vstack_and_reshape(array):
+    """
+    Uses `np.vstack` to add one more dimension from object array to the main array.
+
+    When some of the subarrays are considered individual objects, ``np.array`` cannot
+    be used to reshape the array.
+
+    Args:
+        array: Array to be stacked.
+    """
+    logger.debug(array.flatten().shape)
+    logger.debug(np.vstack(array.flatten()).shape)
+    dims_first_layer = array.shape
+    dims_second_layer = np.array(array.flat[0]).shape
+    return np.reshape(np.vstack(array.flatten()), dims_first_layer + dims_second_layer)
 
 
 def _get_invalid_args(func, argdict):

@@ -157,3 +157,23 @@ def test_indexing():
     assert settings.a[2] + settings.a[1] == 3
     assert settings.b + settings.a[1] == 3
     assert not settings.b.use_relation
+
+
+def test_dimensions():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = [0, 1, 2]
+    settings.c = [0, 1, 2, 3]
+    assert settings.a.dimensions == []
+    settings.a.dimensions = ['b', settings.b]
+    assert settings.a.dimensions == ['b']
+    settings.a.dimensions = ['b', settings.b, settings.c]
+    assert settings.a.dimensions == ['b', 'c']
+
+    settings.a.dimensions = settings.b
+    assert settings.a.dimensions == ['b']
+    with pytest.raises(TypeError):
+        settings.a.dimensions = 'abab'
+    with pytest.raises(TypeError):
+        settings.a.dimensions = [['abab']]
+    

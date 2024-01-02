@@ -24,6 +24,8 @@ dependencies = [
 "networkx",
 "xarray",
 "psutil",
+"pint",
+"pint-xarray",
 ]
 
 dynamic = ["version"]

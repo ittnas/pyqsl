@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import dataclasses
 import types
+import collections
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Sequence
 import logging
 
 import networkx as nx
@@ -32,6 +33,11 @@ class Setting:
     described by asigning a relation to the setting. If relation is is activated
     through setting use_relation=True, the value of the setting is the evaluated
     value of the relation instead (``self.relation.evaluated_value``).
+
+    If the setting is vector-valued, giving another setting as a dimension through
+    ``dimensions`` field indicates that the setting should be interpreted as the
+    coordinate for the target. Note that setting that is used as a dimension cannot
+    be swept directly or indirectly.
     """
 
     name: Optional[str] = None
@@ -39,10 +45,12 @@ class Setting:
     unit: str = ""
     relation: Optional["Relation"] = None
     use_relation: bool = False
+    dimensions: list[str] = dataclasses.field(default_factory=list)
     _relation: Optional["Relation"] = dataclasses.field(
         init=False, repr=False, default=None
     )
     _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
+    _dimensions: list[str] = dataclasses.field(init=False, repr=False, default_factory=list)
 
     def __add__(self, other):
         return self.value + other
@@ -197,6 +205,45 @@ class Setting:
             value = None
         self._value = value
 
+    @property
+    def dimensions(self) -> list[str]:
+        return self._dimensions
+
+    @dimensions.setter
+    def dimensions(self, value: Setting | Sequence[str | Setting]):
+        """
+        Sets the dimensions attribute.
+
+        Args:
+            value:
+                A sequence of settings, settings names or a single setting used to initialize
+                the dimensions list.
+        Raises:
+            TypeError if wrong datatype is used to initialize the setting.
+        """
+        if isinstance(value, property):
+            value = []
+        new_dimension_list = []
+        if isinstance(value, str):
+            raise TypeError('Provide a list of strings instead of a string.')
+        if isinstance(value, Setting):
+            sequence_of_dimensions = [value]
+        else:
+            sequence_of_dimensions = value
+        for dimension in sequence_of_dimensions:
+            if isinstance(dimension, Setting):
+                new_dimension_list.append(dimension.name)
+            elif isinstance(dimension, str):
+                new_dimension_list.append(dimension)
+            else:
+                raise TypeError('Either setting or setting name must be used for dimensions.')
+
+        # Remove duplicates
+        seen = collections.OrderedDict()
+        for element in new_dimension_list:
+            seen[element] = None
+        self._dimensions = list(seen.keys())
+
 
 @dataclass
 class Settings:
@@ -304,7 +351,8 @@ class Settings:
             List of setting names with relations to resolve.
 
         Raises:
-            ValueError if cyclic relations
+            ValueError if cyclic relations or settings which are used for dimensions
+            have relations.
         """
         # Build relation hierarchy
         relation_graph = self.get_relation_hierarchy()
@@ -318,6 +366,12 @@ class Settings:
             if setting.has_active_relation():
                 setting.relation.resolve(self)
                 nodes_with_relation.append(node)
+        dimensions = set()
+        for setting in self:
+            if setting.dimensions:
+                dimensions.update(setting.dimensions)
+        if dimensions & set(nodes_with_relation):
+            raise ValueError("Settings that are used as dimensions cannot have relations.")
         return nodes_with_relation
 
     def get_relation_hierarchy(self) -> nx.DiGraph:

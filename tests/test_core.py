@@ -133,7 +133,8 @@ def test_task_that_returns_tuples(ab_settings):
     result = pyqsl.run(
         task_that_returns_tuples, ab_settings, sweeps=sweeps, expand_data=False
     )
-    assert result.data.shape == (3, 5, 2)
+    assert result.data.shape == (3, 5)
+    assert result.data[0, 0] == (-1, +1)
 
 
 def test_task_that_returns_dicts(ab_settings):
@@ -222,3 +223,21 @@ def test_get_invalid_args():
 def test_settings_as_task_argument(ab_settings):
     result = pyqsl.run(task_with_settings_as_input, ab_settings)
     assert result.data == 6
+
+
+def test_adding_dimension_in_post_processing():
+    def add_list_as_dimension(settings, sweeps):
+        return {
+            "y": {"x": settings.x.value}
+        }
+
+    def task(x, a):
+        return {"y": a*x}
+
+    settings = pyqsl.Settings()
+    settings.x = np.linspace(0, 1, 7)
+    settings.x.unit = 'm'
+    settings.a = 2
+    sweeps = {'a': [1, 2]}
+    result = pyqsl.run(task, settings, sweeps=sweeps, post_process_after_loop=add_list_as_dimension)
+    assert result.dataset.y.dims == ("a", "x")

@@ -30,6 +30,11 @@ from .relation import Equation, LookupTable, Relation  # pylint: disable=cyclic-
 from .settings import Setting, Settings  # pylint: disable=cyclic-import
 from .simulation_result import SimulationResult, load
 
+import pint_xarray
+
+if not pint_xarray.unit_registry.default_format:
+    pint_xarray.unit_registry.default_format = "~"
+
 logging.getLogger(__name__).addHandler(NullHandler())
 
 
