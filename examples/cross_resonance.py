@@ -9,11 +9,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+import matplotlib.pyplot as plt
 import numpy as np
 from qutip import *
 
 import pyqsl
-import matplotlib.pyplot as plt
 
 w0 = 5.5  # QB0 freq
 w1 = 6  # QB1 freq
@@ -44,7 +44,7 @@ output_list = [
 ]
 
 # These parameres are swept in the loop.
-sweep_arrays = {"wd0": np.linspace(5.8, 6.2, 51)}
+sweep_arrays = {"wd0": np.linspace(5.8, 6.2, 51), "Ad0": np.linspace(0.0, 0.1, 11)}
 
 # This dictionary contains all the other parameters.
 settings = pyqsl.Settings()

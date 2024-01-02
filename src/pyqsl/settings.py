@@ -8,14 +8,15 @@ Classes:
 """
 from __future__ import annotations
 
-import dataclasses
-import types
 import collections
-from dataclasses import dataclass
-from typing import Any, Optional, Union, Sequence
+import dataclasses
 import logging
+import types
+from dataclasses import dataclass
+from typing import Any, Optional, Sequence, Union
 
 import networkx as nx
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,7 +51,9 @@ class Setting:
         init=False, repr=False, default=None
     )
     _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
-    _dimensions: list[str] = dataclasses.field(init=False, repr=False, default_factory=list)
+    _dimensions: list[str] = dataclasses.field(
+        init=False, repr=False, default_factory=list
+    )
 
     def __add__(self, other):
         return self.value + other
@@ -225,7 +228,7 @@ class Setting:
             value = []
         new_dimension_list = []
         if isinstance(value, str):
-            raise TypeError('Provide a list of strings instead of a string.')
+            raise TypeError("Provide a list of strings instead of a string.")
         if isinstance(value, Setting):
             sequence_of_dimensions = [value]
         else:
@@ -236,7 +239,9 @@ class Setting:
             elif isinstance(dimension, str):
                 new_dimension_list.append(dimension)
             else:
-                raise TypeError('Either setting or setting name must be used for dimensions.')
+                raise TypeError(
+                    "Either setting or setting name must be used for dimensions."
+                )
 
         # Remove duplicates
         seen = collections.OrderedDict()
@@ -371,7 +376,9 @@ class Settings:
             if setting.dimensions:
                 dimensions.update(setting.dimensions)
         if dimensions & set(nodes_with_relation):
-            raise ValueError("Settings that are used as dimensions cannot have relations.")
+            raise ValueError(
+                "Settings that are used as dimensions cannot have relations."
+            )
         return nodes_with_relation
 
     def get_relation_hierarchy(self) -> nx.DiGraph:
@@ -395,7 +402,9 @@ class Settings:
                     relation_graph.add_edge(dependent_setting, setting.name)
         return relation_graph
 
-    def get_dependent_setting_names(self, setting: Setting, relation_hierarchy: Optional[nx.DiGraph]=None) -> list[str]:
+    def get_dependent_setting_names(
+        self, setting: Setting, relation_hierarchy: Optional[nx.DiGraph] = None
+    ) -> list[str]:
         """
         Returns the names for settings dependent on the given setting.
 

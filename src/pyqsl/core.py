@@ -3,6 +3,7 @@ This module contains the core functionality of pyqsl simulation loop.
 
 pyqsl simulation is done by calling the ``run`` function in this module.
 """
+import collections
 import copy
 import datetime
 import inspect
@@ -10,7 +11,6 @@ import logging
 import multiprocessing as mp
 from functools import partial
 from typing import Any, Callable, Optional
-import collections
 
 import numpy as np
 import psutil
@@ -24,6 +24,7 @@ from pyqsl.common import (
     TaskOutputType,
     convert_data_coordinates_to_standard_form,
     convert_sweeps_to_standard_form,
+    vstack_and_reshape,
 )
 from pyqsl.settings import Settings
 from pyqsl.simulation_result import SimulationResult
@@ -324,13 +325,12 @@ def _create_dataset(
     """
     # pylint: disable=too-many-branches,too-many-statements,too-many-locals
     coords = convert_sweeps_to_standard_form(sweeps)
-    logger.debug(coords)
     data_coordinates_std_form = convert_data_coordinates_to_standard_form(
         data_coordinates
     )
     # output_array:
     # [prod(Dsweeps), dict['output': dict[Doutput], 'settings_with_relations': 'dict']
-    
+
     # reshaped_array:
     # [Dsweeps, dict['output': dict[Doutput], 'settings_with_relations': 'dict']
     reshaped_array = np.reshape(np.array(output_array, dtype=object), dims)
@@ -342,45 +342,91 @@ def _create_dataset(
     extended_coords = copy.copy(coords)
     # Add settings as variables
     if len(dims):
-        _add_settings_as_variables(data_vars, settings, extended_coords, reshaped_array_expanded['settings_with_relations'], dims)
+        _add_settings_as_variables(
+            data_vars,
+            settings,
+            extended_coords,
+            reshaped_array_expanded["settings_with_relations"],
+            dims,
+        )
 
     if not expand_data:
         coord_names = tuple(coords) + tuple(
-            f"index_{ii}" for ii in range(len(reshaped_array_expanded['output'].shape) - len(dims))
+            f"index_{ii}"
+            for ii in range(len(reshaped_array_expanded["output"].shape) - len(dims))
         )
-        data_vars["data"] = (coord_names, reshaped_array_expanded['output'])
+        data_vars["data"] = (coord_names, reshaped_array_expanded["output"])
     else:
         # Check type from first element
-        logger.debug(f'reshaped_array.flat {reshaped_array.flat[0]}')
-        first_element = reshaped_array.flat[0]['output']
+        logger.debug(f"reshaped_array.flat {reshaped_array.flat[0]}")
+        first_element = reshaped_array.flat[0]["output"]
         if isinstance(first_element, collections.abc.Mapping):
-            output_array_expanded = _expand_dict_from_data(reshaped_array_expanded['output'])
+            output_array_expanded = _expand_dict_from_data(
+                reshaped_array_expanded["output"]
+            )
             for key, value in output_array_expanded.items():
                 data_vars[key] = (tuple(coords), value)
-        elif isinstance(first_element, (collections.abc.Sequence, np.ndarray)) and (not isinstance(first_element, str)):
-            output_array_expanded = np.array(_expand_sequence_from_data(reshaped_array_expanded['output'], dims))
-            logger.debug(f'{output_array_expanded}, {output_array_expanded.shape}')
-            extended_coords['index'] = np.arange(output_array_expanded.size//np.prod(dims))
-            coord_names = ('index',) + tuple(coords)
-            coord_names = coord_names + tuple(f"dummy_{ii}" for ii in range(len(output_array_expanded.shape) - len(coord_names)))
-            logger.debug(f'{coord_names}, {len(output_array_expanded.shape)}, {len(coord_names)}')
+        elif isinstance(first_element, (collections.abc.Sequence, np.ndarray)) and (
+            not isinstance(first_element, str)
+        ):
+            output_array_expanded = np.array(
+                _expand_sequence_from_data(reshaped_array_expanded["output"], dims)
+            )
+            logger.debug(f"{output_array_expanded}, {output_array_expanded.shape}")
+            extended_coords["index"] = np.arange(
+                output_array_expanded.size // np.prod(dims)
+            )
+            coord_names = ("index",) + tuple(coords)
+            coord_names = coord_names + tuple(
+                f"dummy_{ii}"
+                for ii in range(len(output_array_expanded.shape) - len(coord_names))
+            )
+            logger.debug(
+                f"{coord_names}, {len(output_array_expanded.shape)}, {len(coord_names)}"
+            )
             data_vars["data"] = (coord_names, output_array_expanded)
         else:
-            data_vars["data"] = (tuple(coords), reshaped_array_expanded['output'])
-    _add_dimensions_to_data_var(data_vars, settings, extended_coords, reshaped_array_expanded['settings_with_relations'], dims)
+            data_vars["data"] = (tuple(coords), reshaped_array_expanded["output"])
+    _add_dimensions_to_data_var(
+        data_vars,
+        settings,
+        extended_coords,
+        reshaped_array_expanded["settings_with_relations"],
+        dims,
+    )
     for data_var, entry in data_vars.items():
-        data_vars[data_var] = entry[0], entry[1], {'units': settings[data_var].unit if data_var in settings else ''}
+        data_vars[data_var] = (
+            entry[0],
+            entry[1],
+            {"units": settings[data_var].unit if data_var in settings else ""},
+        )
     for coord_name, entry in extended_coords.items():
-        extended_coords[coord_name] = xr.DataArray(entry, dims=(coord_name,), attrs={'units': settings[coord_name].unit if coord_name in settings else ''})
+        extended_coords[coord_name] = xr.DataArray(
+            entry,
+            dims=(coord_name,),
+            attrs={
+                "units": settings[coord_name].unit if coord_name in settings else ""
+            },
+        )
+    settings_resolved = settings.copy()
+    settings_resolved.resolve_relations()
     dataset = xr.Dataset(
-        data_vars=data_vars, coords=extended_coords, attrs={"settings": settings}
+        data_vars=data_vars,
+        coords=extended_coords,
+        attrs={"settings": settings_resolved},
     )
     dataset = dataset.pint.quantify()
 
     return dataset
 
 
-def _add_settings_as_variables(data_vars: dict[str, tuple[tuple[str, ...], Any]], settings: Settings, sweeps: SweepsStandardType, setting_values, dims):
+def _add_settings_as_variables(
+    data_vars: dict[str, tuple[tuple[str, ...], Any]],
+    settings: Settings,
+    sweeps: SweepsStandardType,
+    setting_values,
+    dims,
+):
     """
     Adds settings with resolved relations as data variables.
 
@@ -399,21 +445,29 @@ def _add_settings_as_variables(data_vars: dict[str, tuple[tuple[str, ...], Any]]
             setting_dimension_map[dependent_name].add(setting_name)
     setting_values = _expand_dict_from_data(setting_values)
     for dependent_name, sweep_names in setting_dimension_map.items():
-        new_slice = [0]*len(dims)
+        new_slice = [0] * len(dims)
         name_indices = []
         for sweep_name in sweep_names:
             name_index = list(sweeps.keys()).index(sweep_name)
             name_indices.append(name_index)
             new_slice[name_index] = slice(None)
-        sweep_names_in_order = [list(sweeps.keys())[index] for index in sorted(name_indices)]
-        logger.debug(f'{dependent_name}: {new_slice}')
+        sweep_names_in_order = [
+            list(sweeps.keys())[index] for index in sorted(name_indices)
+        ]
+        logger.debug(f"{dependent_name}: {new_slice}")
         sliced_values = setting_values[dependent_name][tuple(new_slice)]
-        logger.debug(f'{dependent_name}: {sliced_values}')
-        logger.debug(f'{dependent_name}: {sweep_names}')
+        logger.debug(f"{dependent_name}: {sliced_values}")
+        logger.debug(f"{dependent_name}: {sweep_names}")
         data_vars[dependent_name] = (sweep_names_in_order, sliced_values)
 
 
-def _add_dimensions_to_data_var(data_vars: dict[str, tuple[tuple[str, ...], Any]], settings: Settings, sweeps: SweepsStandardType, setting_values, dims):
+def _add_dimensions_to_data_var(
+    data_vars: dict[str, tuple[tuple[str, ...], Any]],
+    settings: Settings,
+    sweeps: SweepsStandardType,
+    setting_values,
+    dims,
+):
     """
     Adds settings with dimensions as data vars. Also adds dimensions to data_vars with names that align with settings.
     """
@@ -422,12 +476,29 @@ def _add_dimensions_to_data_var(data_vars: dict[str, tuple[tuple[str, ...], Any]
         if setting.dimensions:
             for dimension in setting.dimensions:
                 if dimension in data_vars:
-                    logger.warning('Dimension %s of setting %s is varied, which is not allowed. Skipping dimension.'.format(dimension, setting.name))
-                sweeps.update(dict(zip(setting.dimensions, [settings[dimension].value for dimension in setting.dimensions])))
+                    logger.warning(
+                        "Dimension %s of setting %s is varied, which is not allowed. Skipping dimension.".format(
+                            dimension, setting.name
+                        )
+                    )
+                sweeps.update(
+                    dict(
+                        zip(
+                            setting.dimensions,
+                            [
+                                settings[dimension].value
+                                for dimension in setting.dimensions
+                            ],
+                        )
+                    )
+                )
             if setting.name not in data_vars:
                 data_vars[setting.name] = (setting.dimensions, setting.value)
             else:
-                data_vars[setting.name] = (tuple(data_vars[setting.name][0]) + tuple(setting.dimensions), _vstack_and_reshape(data_vars[setting.name][1]))
+                data_vars[setting.name] = (
+                    tuple(data_vars[setting.name][0]) + tuple(setting.dimensions),
+                    vstack_and_reshape(data_vars[setting.name][1]),
+                )
     logger.debug(data_vars)
 
 
@@ -449,11 +520,13 @@ def _expand_dict_from_data(data: np.ndarray):
     keys = _make_list_unique(all_keys)
     output = {}
     for key in keys:
+
         def value_for_key(dictionary):
             if key in dictionary:
                 return dictionary[key]
             else:
                 return np.NAN
+
         func = np.vectorize(value_for_key, otypes=[object])
         values = func(data)
         output[key] = values
@@ -463,7 +536,7 @@ def _expand_dict_from_data(data: np.ndarray):
 def _expand_sequence_from_data(data: np.ndarray, dims):
     total_length = 0
     if len(dims) == 0:
-        result = np.zeros((len(data),), dtype='O')
+        result = np.zeros((len(data),), dtype="O")
         for ii, element in enumerate(data):
             result[ii] = element
         return result
@@ -476,6 +549,7 @@ def _expand_sequence_from_data(data: np.ndarray, dims):
     output = []
     logger.debug(total_length)
     for ii in range(total_length):
+
         def value_for_index(sequence):
             try:
                 if ii < len(sequence):
@@ -485,28 +559,12 @@ def _expand_sequence_from_data(data: np.ndarray, dims):
             except TypeError:
                 # Scalar
                 return np.NAN
+
         func = np.vectorize(value_for_index, otypes=[object])
         values = func(data)
         logger.debug(values)
         output.append(values)
     return output
-
-
-def _vstack_and_reshape(array):
-    """
-    Uses `np.vstack` to add one more dimension from object array to the main array.
-
-    When some of the subarrays are considered individual objects, ``np.array`` cannot
-    be used to reshape the array.
-
-    Args:
-        array: Array to be stacked.
-    """
-    logger.debug(array.flatten().shape)
-    logger.debug(np.vstack(array.flatten()).shape)
-    dims_first_layer = array.shape
-    dims_second_layer = np.array(array.flat[0]).shape
-    return np.reshape(np.vstack(array.flatten()), dims_first_layer + dims_second_layer)
 
 
 def _get_invalid_args(func, argdict):

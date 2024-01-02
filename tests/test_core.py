@@ -227,15 +227,15 @@ def test_settings_as_task_argument(ab_settings):
 
 def test_add_dimensions_and_run():
     def task(x, a):
-        return {"y": a*x}
+        return {"y": a * x}
 
     settings = pyqsl.Settings()
     settings.x = np.linspace(0, 1, 7)
-    settings.x.unit = 'm'
+    settings.x.unit = "m"
     settings.y = None
-    settings.y.dimensions = ['x']
-    settings.y.unit = 'm'
+    settings.y.dimensions = ["x"]
+    settings.y.unit = "m"
     settings.a = 2
-    sweeps = {'a': [1, 2]}
+    sweeps = {"a": [1, 2]}
     result = pyqsl.run(task, settings, sweeps=sweeps)
     assert result.dataset.y.dims == ("a", "x")

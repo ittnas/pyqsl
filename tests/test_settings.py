@@ -137,7 +137,7 @@ def test_copy():
     settings.b = 1
     settings.c = None
     copied = settings.copy()
-    settings.c.relation = pyqsl.Equation(equation='b + 1')
+    settings.c.relation = pyqsl.Equation(equation="b + 1")
     assert copied.b.value == settings.b.value
     copied.b = 2
     assert copied.b.value != settings.b.value
@@ -165,15 +165,14 @@ def test_dimensions():
     settings.b = [0, 1, 2]
     settings.c = [0, 1, 2, 3]
     assert settings.a.dimensions == []
-    settings.a.dimensions = ['b', settings.b]
-    assert settings.a.dimensions == ['b']
-    settings.a.dimensions = ['b', settings.b, settings.c]
-    assert settings.a.dimensions == ['b', 'c']
+    settings.a.dimensions = ["b", settings.b]
+    assert settings.a.dimensions == ["b"]
+    settings.a.dimensions = ["b", settings.b, settings.c]
+    assert settings.a.dimensions == ["b", "c"]
 
     settings.a.dimensions = settings.b
-    assert settings.a.dimensions == ['b']
+    assert settings.a.dimensions == ["b"]
     with pytest.raises(TypeError):
-        settings.a.dimensions = 'abab'
+        settings.a.dimensions = "abab"
     with pytest.raises(TypeError):
-        settings.a.dimensions = [['abab']]
-    
+        settings.a.dimensions = [["abab"]]

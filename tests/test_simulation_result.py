@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pytest
 
 import pyqsl
@@ -26,12 +27,10 @@ def test_get_sweeps(simulation_result):
 
 
 def test_setting_broadcasting(simulation_result):
-    assert simulation_result.d.shape == simulation_result.dataset["diff"].shape  # Sweep
-    assert simulation_result.b.shape == simulation_result.dataset["diff"].shape
-    assert simulation_result.c.shape == simulation_result.dataset["diff"].shape  # Sweep
-    assert (
-        simulation_result.h.shape == simulation_result.dataset["diff"].shape
-    )  # Unrelated
+    assert simulation_result.d.shape == (11,)  # Sweep
+    assert simulation_result.b.shape == (7,)
+    assert simulation_result.c.shape == (7,)  # Sweep
+    assert np.isscalar(simulation_result.h)  # Unrelated
 
 
 def test_saving(simulation_result, tmpdir):
@@ -51,12 +50,8 @@ def test_loading(simulation_result, tmpdir):
             "d",
             "e",
             "h",
-            "a_evaluated",
-            "b_evaluated",
-            "c_evaluated",
             "dataset",
             "diff",
-            "e_evaluated",
             "settings",
             "sweeps",
         ]

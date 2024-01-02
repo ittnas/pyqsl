@@ -12,6 +12,7 @@ from typing import Any, Optional, Union
 import numpy as np
 import xarray as xr
 
+from pyqsl.common import vstack_and_reshape
 from pyqsl.settings import Setting
 
 logger = logging.getLogger(__name__)
@@ -63,36 +64,41 @@ class SimulationResult:
                     "Settings not found in simulation result."
                 ) from exc
         if key == "sweeps":
+            # TODO: does not return sweeps but all the dimensions. Should be fixed.
             return {coord: value.values for coord, value in self.dataset.coords.items()}
         if key in self.dataset.data_vars:
             da = self.dataset[key]
             if len(da.dims) == 0:
                 return da.values[()]
             return da.values
+        if key in self.dataset.coords:
+            return self.dataset.coords[key].values
         if "settings" in self.dataset.attrs and key in self.dataset.attrs["settings"]:
-            if f"{key}_evaluated" in self.dataset.data_vars:
+            if f"{key}" in self.dataset.data_vars:
                 return (
-                    self.dataset[f"{key}_evaluated"].values
-                    if len(self.dataset[f"{key}_evaluated"].dims) > 0
-                    else self.dataset[f"{key}_evaluated"].values[()]
+                    self.dataset[f"{key}"].values
+                    if len(self.dataset[f"{key}"].dims) > 0
+                    else self.dataset[f"{key}"].values[()]
                 )
-            model_data_array = self.dataset[list(self.dataset.data_vars)[0]]
-            if key in self.dataset.coords:
-                broadcast_shape = [1] * len(model_data_array.shape)
-                broadcast_shape[model_data_array.dims.index(key)] = -1
-                reshaped = np.reshape(
-                    np.array(self.dataset.coords[key].values), broadcast_shape
-                )
-                return np.broadcast_to(
-                    reshaped,
-                    model_data_array.shape,
-                    subok=True,
-                )
-            return np.broadcast_to(
-                self.dataset.attrs["settings"][key].value,
-                model_data_array.shape,
-                subok=True,
-            )
+            else:
+                return self.dataset.settings[key].value
+            # model_data_array = self.dataset[list(self.dataset.data_vars)[0]]
+            # if key in self.dataset.coords:
+            #     broadcast_shape = [1] * len(model_data_array.shape)
+            #     broadcast_shape[model_data_array.dims.index(key)] = -1
+            #     reshaped = np.reshape(
+            #         np.array(self.dataset.coords[key].values), broadcast_shape
+            #     )
+            #     return np.broadcast_to(
+            #         reshaped,
+            #         model_data_array.shape,
+            #         subok=True,
+            #     )
+            # return np.broadcast_to(
+            #     self.dataset.attrs["settings"][key].value,
+            #     model_data_array.shape,
+            #     subok=True,
+            # )
         raise AttributeError()
 
     def __dir__(self):
@@ -128,6 +134,7 @@ class SimulationResult:
         self,
         key: Union[str, tuple[str]],
         order: Optional[tuple[Union[str, Setting]]] = None,
+        convert_to_array: bool = True,
     ):
         """
         Returns simulation parameters reordered according given order.
@@ -139,6 +146,9 @@ class SimulationResult:
                 If None, the default order is used. If the setting name is not part of the sweep,
                 the dimensions of the returned data will be expanded so that returned data
                 will always have at least as many dimensions as there are settings listed here.
+            convert_to_array:
+                If True, an attempt will be made to convert the resulting arrays to numpy arrays.
+
 
         Returns:
             Returned data. The return value will have the same dimensions as the key argument, i.e.
@@ -148,8 +158,18 @@ class SimulationResult:
         if isinstance(key, str):
             return self._reorder(key, order)
         data = []
+        all_dimension_names = {dim: None for dim in order} if order else {}
         for key_element in key:
-            data.append(self._reorder(key_element, order))
+            if key_element in self.dataset.data_vars:
+                all_dimension_names.update(
+                    {dim: None for dim in self.dataset.data_vars[key_element].dims}
+                )
+        all_dimension_names_list = list(all_dimension_names.keys())
+        logger.debug(all_dimension_names_list)
+        for key_element in key:
+            data.append(
+                vstack_and_reshape(self._reorder(key_element, all_dimension_names_list))
+            )
         return tuple(data)
 
     def _reorder(self, key, order: Optional[tuple[Union[str, Setting]]] = None):
@@ -163,8 +183,10 @@ class SimulationResult:
         ]
         for order_name in order_names:
             if order_name not in self.settings:
-                raise ValueError("All elements of order argument must be in settings")
-        current_dimension_names = list(self.sweeps.keys())
+                raise ValueError("All elements of order argument must be in settings.")
+        current_dimension_names = (
+            list(self.dataset[key].dims) if key in self.dataset else []
+        )
         new_dimension_names = [
             order_name
             for order_name in order_names
@@ -175,7 +197,10 @@ class SimulationResult:
             slice(None) if dim in current_dimension_names else np.newaxis
             for dim in all_dimension_names_in_old_order
         )
-        data = getattr(self, key)
+        logger.debug(slice_tuple)
+        data = np.array(getattr(self, key))
+        logger.debug(key)
+        logger.debug(data)
         data = data[slice_tuple]
         transpose_list = []
         for order_name in order_names:
@@ -186,7 +211,14 @@ class SimulationResult:
             if element not in transpose_list
         ]
         transpose_list.extend(other_dimensions)
+        dims = [
+            len(self.dataset.coords[dim]) if dim in self.dataset.coords else 1
+            for dim in order
+        ]
+        logger.debug(transpose_list)
+        logger.debug(data)
         data = np.transpose(data, tuple(transpose_list))
+        data = np.broadcast_to(data, dims)
         return data
 
 

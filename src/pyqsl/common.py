@@ -3,6 +3,7 @@ Definitions used by more than one other module.
 """
 import logging
 from typing import Any, Sequence
+
 import numpy as np
 
 from pyqsl.settings import Setting
@@ -53,7 +54,7 @@ def convert_sweeps_to_standard_form(
         except ValueError:
             correct_shape = False
         if not correct_shape:
-            cast_shape = np.zeros((ii, ), dtype='O')
+            cast_shape = np.zeros((ii,), dtype="O")
             for jj, value in enumerate(sweep_values):
                 logger.debug(value)
                 cast_shape[jj] = value
@@ -86,3 +87,18 @@ def convert_data_coordinates_to_standard_form(
         new_value = convert_sweeps_to_standard_form(value)
         new_data_coordinates[new_key] = new_value
     return new_data_coordinates
+
+
+def vstack_and_reshape(array: np.ndarray) -> np.ndarray:
+    """
+    Uses `np.vstack` to add one more dimension from object array to the main array.
+
+    When some of the subarrays are considered individual objects, ``np.array`` cannot
+    be used to reshape the array.
+
+    Args:
+        array: Array to be stacked.
+    """
+    dims_first_layer = array.shape
+    dims_second_layer = np.array(array.flat[0]).shape
+    return np.reshape(np.vstack(array.flatten()), dims_first_layer + dims_second_layer)

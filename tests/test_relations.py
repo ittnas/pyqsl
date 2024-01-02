@@ -186,7 +186,7 @@ def test_nodes_with_relation_is_correct():
     settings.a = 1
     settings.b = 2
     settings.c = None
-    settings.c.relation = pyqsl.Equation(equation='a+b')
+    settings.c.relation = pyqsl.Equation(equation="a+b")
     nodes_with_relation = settings.resolve_relations()
     assert settings.c.name in nodes_with_relation
     assert settings.a.name not in nodes_with_relation
@@ -200,11 +200,11 @@ def test_chained_relations_with_inactive_relation():
     settings.c = None
     settings.d = 3
     settings.f = None
-    settings.c.relation = pyqsl.Equation(equation='a + b')
-    settings.d.relation = pyqsl.Equation(equation='c')
+    settings.c.relation = pyqsl.Equation(equation="a + b")
+    settings.d.relation = pyqsl.Equation(equation="c")
     settings.d.use_relation = False
-    settings.f.relation = pyqsl.Equation(equation='d')
+    settings.f.relation = pyqsl.Equation(equation="d")
     nodes_with_relation = settings.resolve_relations()
-    assert 'c' in nodes_with_relation
-    assert 'd' not in nodes_with_relation
-    assert 'f' in nodes_with_relation
+    assert "c" in nodes_with_relation
+    assert "d" not in nodes_with_relation
+    assert "f" in nodes_with_relation
