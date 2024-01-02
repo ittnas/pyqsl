@@ -41,6 +41,7 @@ class Setting:
     be swept directly or indirectly.
     """
 
+    # pylint: disable=too-many-instance-attributes
     name: Optional[str] = None
     value: Optional[Any] = None
     unit: str = ""
@@ -208,8 +209,11 @@ class Setting:
             value = None
         self._value = value
 
-    @property
+    @property  # type: ignore[no-redef]
     def dimensions(self) -> list[str]:
+        """
+        Returns the dimensions for the setting.
+        """
         return self._dimensions
 
     @dimensions.setter
@@ -226,16 +230,17 @@ class Setting:
         """
         if isinstance(value, property):
             value = []
-        new_dimension_list = []
+        new_dimension_list: list[str] = []
+        sequence_of_dimensions: Sequence[str | Setting]
         if isinstance(value, str):
             raise TypeError("Provide a list of strings instead of a string.")
         if isinstance(value, Setting):
             sequence_of_dimensions = [value]
         else:
-            sequence_of_dimensions = value
+            sequence_of_dimensions = value  # type: ignore[assignment]
         for dimension in sequence_of_dimensions:
             if isinstance(dimension, Setting):
-                new_dimension_list.append(dimension.name)
+                new_dimension_list.append(dimension.name)  # type: ignore[arg-type]
             elif isinstance(dimension, str):
                 new_dimension_list.append(dimension)
             else:
@@ -244,7 +249,7 @@ class Setting:
                 )
 
         # Remove duplicates
-        seen = collections.OrderedDict()
+        seen: dict[str, None] = collections.OrderedDict()
         for element in new_dimension_list:
             seen[element] = None
         self._dimensions = list(seen.keys())
@@ -277,7 +282,7 @@ class Settings:
         return self._to_string()
 
     def _to_string(self):
-        output: str = ""
+        output = ""
 
         for setting in self:
             output = output + f"{setting.name}: {setting.value}"

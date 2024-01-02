@@ -54,3 +54,6 @@ good-names="ii, jj, i, j, k, l, m, p, da, ds, f"
 max-line-length=120
 max-args=10
 max-locals=25
+disable = [
+    "W0511",  # This is the message ID for TODO warnings
+]

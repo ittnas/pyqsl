@@ -80,25 +80,7 @@ class SimulationResult:
                     if len(self.dataset[f"{key}"].dims) > 0
                     else self.dataset[f"{key}"].values[()]
                 )
-            else:
-                return self.dataset.settings[key].value
-            # model_data_array = self.dataset[list(self.dataset.data_vars)[0]]
-            # if key in self.dataset.coords:
-            #     broadcast_shape = [1] * len(model_data_array.shape)
-            #     broadcast_shape[model_data_array.dims.index(key)] = -1
-            #     reshaped = np.reshape(
-            #         np.array(self.dataset.coords[key].values), broadcast_shape
-            #     )
-            #     return np.broadcast_to(
-            #         reshaped,
-            #         model_data_array.shape,
-            #         subok=True,
-            #     )
-            # return np.broadcast_to(
-            #     self.dataset.attrs["settings"][key].value,
-            #     model_data_array.shape,
-            #     subok=True,
-            # )
+            return self.dataset.settings[key].value
         raise AttributeError()
 
     def __dir__(self):
@@ -134,7 +116,6 @@ class SimulationResult:
         self,
         key: Union[str, tuple[str]],
         order: Optional[tuple[Union[str, Setting]]] = None,
-        convert_to_array: bool = True,
     ):
         """
         Returns simulation parameters reordered according given order.
@@ -146,9 +127,6 @@ class SimulationResult:
                 If None, the default order is used. If the setting name is not part of the sweep,
                 the dimensions of the returned data will be expanded so that returned data
                 will always have at least as many dimensions as there are settings listed here.
-            convert_to_array:
-                If True, an attempt will be made to convert the resulting arrays to numpy arrays.
-
 
         Returns:
             Returned data. The return value will have the same dimensions as the key argument, i.e.
@@ -158,21 +136,29 @@ class SimulationResult:
         if isinstance(key, str):
             return self._reorder(key, order)
         data = []
-        all_dimension_names = {dim: None for dim in order} if order else {}
+        all_dimension_names: dict[str, None] = (
+            {
+                dim if isinstance(dim, str) else dim.name: None for dim in order  # type: ignore[misc]
+            }
+            if order
+            else {}
+        )
         for key_element in key:
             if key_element in self.dataset.data_vars:
                 all_dimension_names.update(
-                    {dim: None for dim in self.dataset.data_vars[key_element].dims}
+                    {dim: None for dim in self.dataset.data_vars[key_element].dims}  # type: ignore[misc]
                 )
         all_dimension_names_list = list(all_dimension_names.keys())
         logger.debug(all_dimension_names_list)
         for key_element in key:
             data.append(
-                vstack_and_reshape(self._reorder(key_element, all_dimension_names_list))
+                vstack_and_reshape(
+                    self._reorder(key_element, tuple(all_dimension_names_list))
+                )
             )
         return tuple(data)
 
-    def _reorder(self, key, order: Optional[tuple[Union[str, Setting]]] = None):
+    def _reorder(self, key, order: Optional[tuple[str | Setting, ...]] = None):
         if not hasattr(self, key):
             raise ValueError(f"Key ({key}) must be a setting or data variable.")
         if order is None:

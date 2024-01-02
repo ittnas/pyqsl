@@ -22,7 +22,6 @@ from pyqsl.common import (
     SweepsStandardType,
     SweepsType,
     TaskOutputType,
-    convert_data_coordinates_to_standard_form,
     convert_sweeps_to_standard_form,
     vstack_and_reshape,
 )
@@ -87,10 +86,10 @@ def _simulation_loop_body(
                 comparison = setting.value != original_settings[name].value
                 if comparison:
                     pass
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 try:
                     comparison = (setting.value != original_settings[name].value).any()
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass
 
             if comparison:
@@ -115,7 +114,7 @@ def run(
     post_process_in_loop: Optional[
         Callable[[Settings, TaskOutputType], TaskOutputType]
     ] = None,
-    post_process_after_loop: Optional[
+    post_process_after_loop: Optional[  # pylint: disable=unused-argument
         Callable[[Settings, SweepsStandardType], DataCoordinatesType]
     ] = None,
     parallelize: bool = False,
@@ -239,7 +238,7 @@ def run(
 
     N_tot = int(np.prod(dims))  # pylint: disable=invalid-name
     logger.info("Sweep dimensions: %s.", str(dims))
-    output_array = [None] * N_tot
+    output_array: list[Optional[dict[str, Any]]] = [None] * N_tot
 
     settings = copy.deepcopy(settings)
 
@@ -288,9 +287,6 @@ def run(
             output = simulation_loop_body_partial(ii)
             output_array[ii] = output
 
-    new_coords: DataCoordinatesType = {}
-    if post_process_after_loop:
-        new_coords.update(post_process_after_loop(settings, sweeps_std_form))
     end_time = datetime.datetime.now()
     logger.info(
         "Simulation finished at %s. The duration of the simulation was %s.",
@@ -301,7 +297,6 @@ def run(
         output_array,
         settings,
         sweeps_std_form,
-        data_coordinates=new_coords,
         expand_data=expand_data,
         dims=dims,
     )
@@ -313,7 +308,6 @@ def _create_dataset(
     output_array: Any,
     settings: Settings,
     sweeps: SweepsStandardType,
-    data_coordinates: DataCoordinatesType,
     expand_data,
     dims,
 ) -> xr.Dataset:
@@ -325,9 +319,6 @@ def _create_dataset(
     """
     # pylint: disable=too-many-branches,too-many-statements,too-many-locals
     coords = convert_sweeps_to_standard_form(sweeps)
-    data_coordinates_std_form = convert_data_coordinates_to_standard_form(
-        data_coordinates
-    )
     # output_array:
     # [prod(Dsweeps), dict['output': dict[Doutput], 'settings_with_relations': 'dict']
 
@@ -338,8 +329,10 @@ def _create_dataset(
     reshaped_array_expanded = _expand_dict_from_data(reshaped_array)
 
     dataset: xr.Dataset
-    data_vars: dict[str, tuple[tuple[str, ...], Any]] = {}
-    extended_coords = copy.copy(coords)
+    data_vars: dict[
+        str, tuple[tuple[str, ...], Any] | tuple[tuple[str, ...], Any, Any]
+    ] = {}
+    extended_coords: dict[str, Any] = copy.copy(coords)
     # Add settings as variables
     if len(dims):
         _add_settings_as_variables(
@@ -358,7 +351,6 @@ def _create_dataset(
         data_vars["data"] = (coord_names, reshaped_array_expanded["output"])
     else:
         # Check type from first element
-        logger.debug(f"reshaped_array.flat {reshaped_array.flat[0]}")
         first_element = reshaped_array.flat[0]["output"]
         if isinstance(first_element, collections.abc.Mapping):
             output_array_expanded = _expand_dict_from_data(
@@ -372,7 +364,6 @@ def _create_dataset(
             output_array_expanded = np.array(
                 _expand_sequence_from_data(reshaped_array_expanded["output"], dims)
             )
-            logger.debug(f"{output_array_expanded}, {output_array_expanded.shape}")
             extended_coords["index"] = np.arange(
                 output_array_expanded.size // np.prod(dims)
             )
@@ -381,9 +372,6 @@ def _create_dataset(
                 f"dummy_{ii}"
                 for ii in range(len(output_array_expanded.shape) - len(coord_names))
             )
-            logger.debug(
-                f"{coord_names}, {len(output_array_expanded.shape)}, {len(coord_names)}"
-            )
             data_vars["data"] = (coord_names, output_array_expanded)
         else:
             data_vars["data"] = (tuple(coords), reshaped_array_expanded["output"])
@@ -391,8 +379,6 @@ def _create_dataset(
         data_vars,
         settings,
         extended_coords,
-        reshaped_array_expanded["settings_with_relations"],
-        dims,
     )
     for data_var, entry in data_vars.items():
         data_vars[data_var] = (
@@ -421,7 +407,9 @@ def _create_dataset(
 
 
 def _add_settings_as_variables(
-    data_vars: dict[str, tuple[tuple[str, ...], Any]],
+    data_vars: dict[
+        str, tuple[tuple[str, ...], Any] | tuple[tuple[str, ...], Any, Any]
+    ],
     settings: Settings,
     sweeps: SweepsStandardType,
     setting_values,
@@ -435,7 +423,7 @@ def _add_settings_as_variables(
     hierarchy = settings.get_relation_hierarchy()
 
     # Map from setting names to setting names that define their dimensionality.
-    setting_dimension_map = {}
+    setting_dimension_map: dict[str, set[str]] = {}
     for setting_name in sweeps:
         setting = settings[setting_name]
         dependent_names = settings.get_dependent_setting_names(setting, hierarchy)
@@ -445,7 +433,7 @@ def _add_settings_as_variables(
             setting_dimension_map[dependent_name].add(setting_name)
     setting_values = _expand_dict_from_data(setting_values)
     for dependent_name, sweep_names in setting_dimension_map.items():
-        new_slice = [0] * len(dims)
+        new_slice: list[int | slice] = [0] * len(dims)
         name_indices = []
         for sweep_name in sweep_names:
             name_index = list(sweeps.keys()).index(sweep_name)
@@ -454,19 +442,16 @@ def _add_settings_as_variables(
         sweep_names_in_order = [
             list(sweeps.keys())[index] for index in sorted(name_indices)
         ]
-        logger.debug(f"{dependent_name}: {new_slice}")
         sliced_values = setting_values[dependent_name][tuple(new_slice)]
-        logger.debug(f"{dependent_name}: {sliced_values}")
-        logger.debug(f"{dependent_name}: {sweep_names}")
-        data_vars[dependent_name] = (sweep_names_in_order, sliced_values)
+        data_vars[dependent_name] = (tuple(sweep_names_in_order), sliced_values)
 
 
 def _add_dimensions_to_data_var(
-    data_vars: dict[str, tuple[tuple[str, ...], Any]],
+    data_vars: dict[
+        str, tuple[tuple[str, ...], Any] | tuple[tuple[str, ...], Any, Any]
+    ],
     settings: Settings,
     sweeps: SweepsStandardType,
-    setting_values,
-    dims,
 ):
     """
     Adds settings with dimensions as data vars. Also adds dimensions to data_vars with names that align with settings.
@@ -477,9 +462,9 @@ def _add_dimensions_to_data_var(
             for dimension in setting.dimensions:
                 if dimension in data_vars:
                     logger.warning(
-                        "Dimension %s of setting %s is varied, which is not allowed. Skipping dimension.".format(
-                            dimension, setting.name
-                        )
+                        "Dimension %s of setting %s is varied, which is not allowed. Skipping dimension.",
+                        dimension,
+                        setting.name,
                     )
                 sweeps.update(
                     dict(
@@ -499,7 +484,6 @@ def _add_dimensions_to_data_var(
                     tuple(data_vars[setting.name][0]) + tuple(setting.dimensions),
                     vstack_and_reshape(data_vars[setting.name][1]),
                 )
-    logger.debug(data_vars)
 
 
 def _make_list_unique(seq):
@@ -522,10 +506,9 @@ def _expand_dict_from_data(data: np.ndarray):
     for key in keys:
 
         def value_for_key(dictionary):
-            if key in dictionary:
-                return dictionary[key]
-            else:
-                return np.NAN
+            if key in dictionary:  # pylint: disable=cell-var-from-loop
+                return dictionary[key]  # pylint: disable=cell-var-from-loop
+            return np.NAN
 
         func = np.vectorize(value_for_key, otypes=[object])
         values = func(data)
@@ -547,22 +530,19 @@ def _expand_sequence_from_data(data: np.ndarray, dims):
             # Scalar
             pass
     output = []
-    logger.debug(total_length)
     for ii in range(total_length):
 
         def value_for_index(sequence):
             try:
-                if ii < len(sequence):
-                    return sequence[ii]
-                else:
-                    return np.NAN
+                if ii < len(sequence):  # pylint: disable=cell-var-from-loop
+                    return sequence[ii]  # pylint: disable=cell-var-from-loop
+                return np.NAN
             except TypeError:
                 # Scalar
                 return np.NAN
 
         func = np.vectorize(value_for_index, otypes=[object])
         values = func(data)
-        logger.debug(values)
         output.append(values)
     return output
 

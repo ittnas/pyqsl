@@ -40,7 +40,7 @@ def convert_sweeps_to_standard_form(
 
     # Tell mypy that there are no Nones
     names_without_none = [name for name in names if name is not None]
-    new_sweep_values = []
+    new_sweep_values: list[Any] = []
 
     for sweep_values in sweeps.values():
         ii = 0
@@ -101,4 +101,5 @@ def vstack_and_reshape(array: np.ndarray) -> np.ndarray:
     """
     dims_first_layer = array.shape
     dims_second_layer = np.array(array.flat[0]).shape
-    return np.reshape(np.vstack(array.flatten()), dims_first_layer + dims_second_layer)
+    stacked = np.vstack(array.flatten())  # type: ignore[call-overload]
+    return np.reshape(stacked, dims_first_layer + dims_second_layer)
