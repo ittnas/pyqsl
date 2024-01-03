@@ -58,17 +58,6 @@ def ramsey_simulation(H, psi0, tlist, output_list):
     return output
 
 
-def add_tlist_as_sweep(settings, sweeps):
-    return {
-        f"p{ii}": {"tlist": settings.tlist.value}
-        for ii in range(len(settings.output_list.value))
-    }
-
-
-def return_coordinate_for_tlist(settings, sweeps):
-    return {settings.tlist, settings.tlist.value}
-
-
 output = pyqsl.run(
     ramsey_simulation,
     settings=settings,
@@ -82,5 +71,5 @@ output = pyqsl.run(
 output.save("ramsey_simulation.pickle")
 
 ##
-plt.pcolor(output.tlist, output.dw, output.p0)
+output.dataset.p0.plot()
 plt.show()

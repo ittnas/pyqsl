@@ -329,9 +329,7 @@ def _create_dataset(
     reshaped_array_expanded = _expand_dict_from_data(reshaped_array)
 
     dataset: xr.Dataset
-    data_vars: dict[
-        str, tuple[tuple[str, ...], Any] | tuple[tuple[str, ...], Any, Any]
-    ] = {}
+    data_vars: dict[str, tuple[tuple[str, ...], Any, dict]] = {}
     extended_coords: dict[str, Any] = copy.copy(coords)
     # Add settings as variables
     if len(dims):
@@ -348,7 +346,7 @@ def _create_dataset(
             f"index_{ii}"
             for ii in range(len(reshaped_array_expanded["output"].shape) - len(dims))
         )
-        data_vars["data"] = (coord_names, reshaped_array_expanded["output"])
+        data_vars["data"] = (coord_names, reshaped_array_expanded["output"], {})
     else:
         # Check type from first element
         first_element = reshaped_array.flat[0]["output"]
@@ -357,7 +355,7 @@ def _create_dataset(
                 reshaped_array_expanded["output"]
             )
             for key, value in output_array_expanded.items():
-                data_vars[key] = (tuple(coords), value)
+                data_vars[key] = (tuple(coords), value, {})
         elif isinstance(first_element, (collections.abc.Sequence, np.ndarray)) and (
             not isinstance(first_element, str)
         ):
@@ -372,9 +370,9 @@ def _create_dataset(
                 f"dummy_{ii}"
                 for ii in range(len(output_array_expanded.shape) - len(coord_names))
             )
-            data_vars["data"] = (coord_names, output_array_expanded)
+            data_vars["data"] = (coord_names, output_array_expanded, {})
         else:
-            data_vars["data"] = (tuple(coords), reshaped_array_expanded["output"])
+            data_vars["data"] = (tuple(coords), reshaped_array_expanded["output"], {})
     _add_dimensions_to_data_var(
         data_vars,
         settings,
@@ -396,20 +394,35 @@ def _create_dataset(
         )
     settings_resolved = settings.copy()
     settings_resolved.resolve_relations()
-    dataset = xr.Dataset(
-        data_vars=data_vars,
-        coords=extended_coords,
-        attrs={"settings": settings_resolved},
-    )
+    try:
+        data_vars_converted = {}
+        for data_var, entry in data_vars.items():
+            try:
+                data_vars_converted[data_var] = (
+                    entry[0],
+                    vstack_and_reshape(entry[1]),
+                    entry[2],
+                )
+            except:  # pylint: disable=bare-except
+                pass
+        dataset = xr.Dataset(
+            data_vars=data_vars_converted,
+            coords=extended_coords,
+            attrs={"settings": settings_resolved},
+        )
+    except:  # pylint: disable=bare-except
+        dataset = xr.Dataset(
+            data_vars=data_vars,
+            coords=extended_coords,
+            attrs={"settings": settings_resolved},
+        )
     dataset = dataset.pint.quantify()
 
     return dataset
 
 
 def _add_settings_as_variables(
-    data_vars: dict[
-        str, tuple[tuple[str, ...], Any] | tuple[tuple[str, ...], Any, Any]
-    ],
+    data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
     settings: Settings,
     sweeps: SweepsStandardType,
     setting_values,
@@ -443,13 +456,11 @@ def _add_settings_as_variables(
             list(sweeps.keys())[index] for index in sorted(name_indices)
         ]
         sliced_values = setting_values[dependent_name][tuple(new_slice)]
-        data_vars[dependent_name] = (tuple(sweep_names_in_order), sliced_values)
+        data_vars[dependent_name] = (tuple(sweep_names_in_order), sliced_values, {})
 
 
 def _add_dimensions_to_data_var(
-    data_vars: dict[
-        str, tuple[tuple[str, ...], Any] | tuple[tuple[str, ...], Any, Any]
-    ],
+    data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
     settings: Settings,
     sweeps: SweepsStandardType,
 ):
@@ -478,11 +489,12 @@ def _add_dimensions_to_data_var(
                     )
                 )
             if setting.name not in data_vars:
-                data_vars[setting.name] = (setting.dimensions, setting.value)
+                data_vars[setting.name] = (setting.dimensions, setting.value, {})
             else:
                 data_vars[setting.name] = (
                     tuple(data_vars[setting.name][0]) + tuple(setting.dimensions),
                     vstack_and_reshape(data_vars[setting.name][1]),
+                    {},
                 )
 
 
