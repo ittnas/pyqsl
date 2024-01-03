@@ -28,7 +28,12 @@ from logging import NullHandler
 import pint_xarray
 
 from .core import run  # pylint: disable=cyclic-import
-from .relation import Equation, LookupTable, Relation  # pylint: disable=cyclic-import
+from .relation import (  # pylint: disable=cyclic-import
+    Equation,
+    Function,
+    LookupTable,
+    Relation,
+)
 from .settings import Setting, Settings  # pylint: disable=cyclic-import
 from .simulation_result import SimulationResult, load
 

@@ -57,6 +57,8 @@ def _simulation_loop_body(
 
         # params_private now contains all the required information to run the simulation
     # Resolve relations
+    if task is None:
+        task = lambda: {}
     settings_with_relations = settings.resolve_relations()
     settings_dict = settings.to_dict()
     invalid_args = _get_invalid_args(task, settings_dict)
@@ -77,6 +79,8 @@ def _simulation_loop_body(
         for setting in output:
             name = setting.name
             if name is None:
+                continue
+            if name in sweeps:
                 continue
             if setting not in original_settings:
                 new_output[name] = setting.value
@@ -185,7 +189,7 @@ def run(
             by the function need to be done within the function definition.
 
     Returns:
-        SimulationResult object, that contains the resulting data and a copy of the settings.
+        :class:`~.SimulationResult` that contains the resulting data and a copy of the settings.
 
     Examples:
         .. code-block:: python
@@ -241,7 +245,6 @@ def run(
     output_array: list[Optional[dict[str, Any]]] = [None] * N_tot
 
     settings = copy.deepcopy(settings)
-
     if pre_process_before_loop:
         pre_process_before_loop(settings)
 
@@ -394,6 +397,9 @@ def _create_dataset(
         )
     settings_resolved = settings.copy()
     settings_resolved.resolve_relations()
+
+    # Try convert data that has numpy object type to any natural datatype.
+    # If conversion cannot be done, retain in original form.
     try:
         data_vars_converted = {}
         for data_var, entry in data_vars.items():

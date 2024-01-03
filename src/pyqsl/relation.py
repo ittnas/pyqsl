@@ -7,14 +7,17 @@ The settings with relations that are part of the sweeps dependency tree will be 
 the sweep.
 
 Classes:
-    Relation
-    Equation
-    LookupTable
+    * Relation
+    * Equation
+    * LookupTable
+    * Function
 """
 import dataclasses
+import inspect
+import copy
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numexpr as ne
 import numpy as np
@@ -35,9 +38,9 @@ class Relation(ABC):
     is controlled by the evaluate-method, which is called during relation resolution. The evaluate method can be
     overridden and used to customize the behaviour of the relation.
 
-    Note that circular relations are not supported, i.e. a setting ```a``` cannot depend on setting ```b``` that
-    in turn depends on setting ```a``` as that would lead to infinite loop. However, the relation for setting ```a```
-    can depend on ```a```. In this case the original value of ```a``` is used for relation resolution.
+    Note that circular relations are not supported, i.e. a setting ``a`` cannot depend on setting ``b`` that
+    in turn depends on setting ``a`` as that would lead to infinite loop. However, the relation for setting ``a``
+    can depend on ``a``. In this case the original value of ``a`` is used for relation resolution.
 
     Attributes:
         parameters: A mapping from parameter names used in the relation to setting names.
@@ -124,12 +127,12 @@ class Equation(Relation):
 
     Examples:
 
-    ```eq = Equation(equation='a + b')``` creates an equation that sums up values
-    of parameters ```a``` and ```b```. An implicit mapping of parameters ```a``` and ```b``` to
-    a settings called ```a``` and ```b``` is created.
+    * ``eq = Equation(equation='a + b')`` creates an equation that sums up values
+    of parameters ``a`` and ``b``. An implicit mapping of parameters ``a`` and ``b`` to
+    a settings called ``a`` and ``b`` is created.
 
-    ```eq = Equation(equation='a + b', parameters={'a': 'amplitude', 'b': 'frequency'})``` maps
-    parameters ```a``` and ```b``` to settings ```amplitude``` and ```frequency```.
+    * ``eq = Equation(equation='a + b', parameters={'a': 'amplitude', 'b': 'frequency'})`` maps
+    parameters ``a`` and ``b`` to settings ``amplitude`` and ``frequency``.
 
     Attributes:
         equation:
@@ -236,3 +239,43 @@ class LookupTable(Relation):
     def __str__(self):
         output = "LookupTable for " + ", ".join(self.coordinates)
         return output
+
+
+@dataclasses.dataclass
+class Function(Relation):
+    """
+    Uses an arbitrary function for a relation.
+
+    Attributes:
+        function: Task function.
+        function_arguments: Default keyword arguments for the function.
+
+    Examples:
+    ``Function(function=my_custom_function)``
+    """
+
+    function: Optional[Callable] = None
+    function_arguments: dict[str, Any] = dataclasses.field(default_factory=dict)
+
+    def __post_init__(self):
+        """
+        Adds the argument names from the function signature as the parameters for the relation.
+        """
+        signature = inspect.signature(self.function)
+        parameter_names = [
+            param.name
+            for param in signature.parameters.values()
+            if param.default == inspect.Parameter.empty
+        ]
+        for name in parameter_names:
+            if (name not in self.parameters) and (name not in self.function_arguments):
+                self._parameters[name] = name
+                logger.debug('Adding missing parameter "%s".', name)
+
+    def evaluate(self, **parameter_values):
+        """
+        Evaluates the function.
+        """
+        arguments = copy.copy(self.function_arguments)
+        arguments.update(parameter_values)
+        return self.function(**arguments)

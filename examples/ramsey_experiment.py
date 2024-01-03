@@ -64,7 +64,6 @@ output = pyqsl.run(
     sweeps=sweep_arrays,
     pre_process_before_loop=pre_processing_before_loop,
     pre_process_in_loop=pre_processing_in_loop,
-    post_process_after_loop=add_tlist_as_sweep,
     parallelize=True,
 )
 

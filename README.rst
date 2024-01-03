@@ -18,7 +18,7 @@ For development, install also the tools needed for testing ::
 
 For automated document generation the library uses Sphinx. To generate the documentation install sphinx and then navigate to doc/ directory. To update the API doc strings, run ::
 
-  sphinx-apidoc -f -o source/ ../pyqsl
+  sphinx-apidoc -f -o source/ ../
 
 and then build the docs with ::
 

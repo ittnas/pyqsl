@@ -3,8 +3,8 @@ Create a settings object for pyqsl.
 
 Classes:
 
-    Setting
-    Settings
+    * Setting
+    * Settings
 """
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import collections
 import dataclasses
 import logging
 import types
+import copy
 from dataclasses import dataclass
 from typing import Any, Optional, Sequence, Union
 
@@ -225,6 +226,7 @@ class Setting:
             value:
                 A sequence of settings, settings names or a single setting used to initialize
                 the dimensions list.
+
         Raises:
             TypeError if wrong datatype is used to initialize the setting.
         """
@@ -332,6 +334,21 @@ class Settings:
                 self._fields[setting.name] = setting
                 super().__setattr__(name, setting)
 
+    def __getattr__(self, name):
+        """
+        If the target setting is not found, creates a new setting.
+
+        At the moment, disabled. Works, but supports too error-prone programming.
+
+        Args:
+            name: Name of the Setting that is searched.
+        """
+        raise AttributeError()
+        # if name.startswith('_'):
+        #     raise AttributeError()
+        # self.__setattr__(name, None)
+        # return self[name]
+
     def to_dict(self) -> dict[str, Any]:
         """Name-value pair representation of the object
 
@@ -380,9 +397,10 @@ class Settings:
         for setting in self:
             if setting.dimensions:
                 dimensions.update(setting.dimensions)
-        if dimensions & set(nodes_with_relation):
+        intersection = dimensions & set(nodes_with_relation)
+        if intersection:
             raise ValueError(
-                "Settings that are used as dimensions cannot have relations."
+                f"Settings that are used as dimensions cannot have relations. These are the settings {[setting for setting in intersection]}."
             )
         return nodes_with_relation
 
@@ -433,10 +451,13 @@ class Settings:
 
         Indidivual Setting objects are copied but their values are not.
         """
-        settings = Settings()
+        new_settings = Settings()
         for setting in self:
-            setattr(settings, setting.name, dataclasses.replace(setting))
-        return settings
+            setattr(new_settings, setting.name, dataclasses.replace(setting))
+            # There is a weird functionality in dataclasses with init=False, which prevents
+            # dimensions from being copied.
+            new_settings[setting.name].dimensions = copy.copy(setting.dimensions)
+        return new_settings
 
 
 def is_acyclic(graph: nx.DiGraph) -> bool:

@@ -13,7 +13,7 @@ import numpy as np
 import xarray as xr
 
 from pyqsl.common import vstack_and_reshape
-from pyqsl.settings import Setting
+from pyqsl.settings import Setting, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +206,28 @@ class SimulationResult:
         data = np.transpose(data, tuple(transpose_list))
         data = np.broadcast_to(data, dims)
         return data
+
+    def to_settings(self) -> Settings:
+        """
+        Converts the simulation result back to :class:`~.Settings` to support chaining.
+
+        The conversion consists of following steps:
+        * Each sweep is converted to a vector-valued :class:`.~Setting`.
+        * Each data variable in the dataset is converted to a :class:`.~Setting`.
+        * The dimensions of the data variables are listed as dimensions of the corresponding
+          setting.
+        * If a Setting with relation appears as a data_var, the relation is turned off.
+        """
+        settings = self.settings.copy()
+        for sweep, value in self.sweeps.items():
+            setattr(settings, sweep, value)
+        for data_var in self.dataset:
+            if data_var not in settings:
+                setattr(settings, data_var, Setting())
+            setting = settings[data_var]
+            setting.value = self.dataset[data_var].values
+            setting.dimensions = list(self.dataset[data_var].dims)
+        return settings
 
 
 def load(path: str) -> SimulationResult:

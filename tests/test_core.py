@@ -154,6 +154,39 @@ def test_task_that_returns_dicts(ab_settings):
     assert result.data[0, 0]["sum"] == -1.0
 
 
+def test_task_that_returns_settings(ab_settings):
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+        ab_settings.b: np.linspace(-1, 0, 5),
+    }
+
+    def task(a, b):
+        settings = pyqsl.Settings()
+        settings.c = a + b
+        return settings
+
+    result = pyqsl.run(
+        task, ab_settings, sweeps=sweeps
+    )
+    assert result.c.shape == (3, 5)
+
+
+def test_task_that_uses_settings(ab_settings):
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+        ab_settings.b: np.linspace(-1, 0, 5),
+    }
+
+    def task(settings):
+        settings.c = settings.a + settings.b
+        return settings
+
+    result = pyqsl.run(
+        task, ab_settings, sweeps=sweeps
+    )
+    assert result.c.shape == (3, 5)
+
+
 def test_prepocessing(ab_settings):
     result = pyqsl.run(
         more_complicated_task, ab_settings, pre_process_before_loop=add_new_setting
