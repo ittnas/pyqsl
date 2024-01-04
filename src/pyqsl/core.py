@@ -529,6 +529,7 @@ def _add_dimensions_to_data_var(
             if setting.name not in data_vars:
                 data_vars[setting.name] = (
                     setting.dimensions,
+                    #vstack_and_reshape(setting_values[setting.name])
                     setting_values[setting.name]
                     if setting.name in setting_values
                     else setting.value,
