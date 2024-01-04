@@ -23,14 +23,14 @@ class SimulationResult:
     This class stores the simulation results and the settings used to generate it.
 
     Simulation result is a wrapper around xarray, which is used as the main data structure.
-    The underlying xarray dataset can be accessed through ```dataset``` attribute.
+    The underlying xarray dataset can be accessed through ``dataset`` attribute.
 
     The settings, results and sweeps can be accessed as attributes of the simulation result.
 
-    There are two ways of accesssing settings, one can either directly call e.g. ```simulation_result.amplitude```
+    There are two ways of accesssing settings, one can either directly call e.g. ``simulation_result.amplitude``
     in which case the only setting values are returned and broadcasted to sweep dimensions.
 
-    Another option is to access ```simulation_result.settings.amplitude```, which returns the setting object.
+    Another option is to access ``simulation_result.settings.amplitude``, which returns the setting object.
     """
 
     dataset: xr.Dataset

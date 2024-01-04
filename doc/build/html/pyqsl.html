@@ -552,11 +552,11 @@ their values can be accessed. This can be done as <code class="docutils literal 
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>This class stores the simulation results and the settings used to generate it.</p>
 <p>Simulation result is a wrapper around xarray, which is used as the main data structure.
-The underlying xarray dataset can be accessed through <code class="docutils literal notranslate"><span class="pre">`dataset`</span></code> attribute.</p>
+The underlying xarray dataset can be accessed through <code class="docutils literal notranslate"><span class="pre">dataset</span></code> attribute.</p>
 <p>The settings, results and sweeps can be accessed as attributes of the simulation result.</p>
-<p>There are two ways of accesssing settings, one can either directly call e.g. <code class="docutils literal notranslate"><span class="pre">`simulation_result.amplitude`</span></code>
+<p>There are two ways of accesssing settings, one can either directly call e.g. <code class="docutils literal notranslate"><span class="pre">simulation_result.amplitude</span></code>
 in which case the only setting values are returned and broadcasted to sweep dimensions.</p>
-<p>Another option is to access <code class="docutils literal notranslate"><span class="pre">`simulation_result.settings.amplitude`</span></code>, which returns the setting object.</p>
+<p>Another option is to access <code class="docutils literal notranslate"><span class="pre">simulation_result.settings.amplitude</span></code>, which returns the setting object.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyqsl.simulation_result.SimulationResult.dataset">
 <span class="sig-name descname"><span class="pre">dataset</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dataset</span></em><a class="headerlink" href="#pyqsl.simulation_result.SimulationResult.dataset" title="Permalink to this definition">¶</a></dt>
