@@ -29,8 +29,7 @@ to generate the html documentation. The documentation can be found in doc/build/
 
 Issues
 ------
-* There is a weird feature related to multiprocessing in windows. Every time a new process is spawned, the parent class is imported. This leads to an infinite loop if care is not taken. Therefore, every time pyqsl.core.simulation_loop is called, a main guard needs to be added, e.g.
-```python
-if __name__=='__main__':
-    result = pyqsl.run(simulation_task, settings, parallelize=True)
-```
+* There is a weird feature related to multiprocessing in windows. Every time a new process is spawned, the parent class is imported. This leads to an infinite loop if care is not taken. Therefore, every time pyqsl.core.simulation_loop is called, a main guard needs to be added, e.g. ::
+
+    if __name__=='__main__':
+        result = pyqsl.run(simulation_task, settings, parallelize=True)
