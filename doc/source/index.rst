@@ -5,13 +5,12 @@
 
 Welcome to pyqsl's documentation!
 =================================
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-.. automodule:: pyqsl
-
+Index
+=====
+   .. toctree::
+      :maxdepth: 2
+      :caption: Contents:
+   .. automodule:: pyqsl
 
 Indices and tables
 ==================

@@ -34,5 +34,3 @@ Issues
 if __name__=='__main__':
     result = pyqsl.run(simulation_task, settings, parallelize=True)
 ```
-  
-
