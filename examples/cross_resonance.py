@@ -28,7 +28,7 @@ settings.g01 = 0.25  # QB 0-1 coupling
 settings.g01.unit = "GHz"
 settings.wd0 = 5  # Drive 0 frequency
 settings.wd0.unit = "GHz"
-settings.wd0.relation = "w1 - g01**2/(w0 - w1)"
+settings.wd0.relation = "w1 - g01**2/(w0 - w1)"  # Approximate frequency shift due to qubit-qubit coupling in the dispersive regime.
 settings.wd1 = 4.6  # Drive 1 frequency
 settings.wd1.unit = "GHz"
 settings.Ad0 = 0.01  # Drive 0 strength
@@ -163,10 +163,13 @@ output = pyqsl.run(
 )
 ##
 fig, axs = plt.subplots(2, 2)
+cr_op_point = np.argmax((-np.abs(output.dataset.q1).isel(q0_t0=0) + np.abs(output.dataset.q1).isel(q0_t0=1)).values)
 np.abs(output.dataset.q0).isel(q0_t0=0).plot(ax=axs[0, 0])
 np.abs(output.dataset.q0).isel(q0_t0=1).plot(ax=axs[1, 0])
 np.abs(output.dataset.q1).isel(q0_t0=0).plot(ax=axs[0, 1])
+axs[0, 1].axvline(output.dataset.coords[output.dataset.q0.isel(q0_t0=1).dims[0]][cr_op_point], color='k')
 np.abs(output.dataset.q1).isel(q0_t0=1).plot(ax=axs[1, 1])
+axs[1, 1].axvline(output.dataset.coords[output.dataset.q0.isel(q0_t0=1).dims[0]][cr_op_point], color='k')
 plt.show()
 ##
 output.save("cross_resonance.pickle")
