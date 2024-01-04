@@ -37,6 +37,43 @@
             
   <section id="pyqsl-package">
 <h1>pyqsl package<a class="headerlink" href="#pyqsl-package" title="Permalink to this heading">¶</a></h1>
+<section id="module-pyqsl">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-pyqsl" title="Permalink to this heading">¶</a></h2>
+<p>Package for running simulations and saving the results.</p>
+<section id="usage">
+<h3>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h3>
+<p>The simulation task is performed in a user-defined funtion that takes a
+dictionary of the simulation parameters as an input and gives simulation
+result as an output.</p>
+<p>The power of pyqsl is to enable the user to change the values of simulation
+parameters in a loop. This is done in the run() function. The
+run function takes a simulation task as an argument and loops it over with
+all the different parameters defined by the user in the sweeps dictionary.
+The keys of the dictionary are the parameters that are varied
+(they need to exist also in the params dictionary) and the keys are lists of
+parameter values.</p>
+<p>The output of the run function is a SimulationResult instance which attributes
+correspond to different simulation result arrays. The dimensions of the result
+arreys correspond to different parameter configurations. There is also an option
+to perform the simulation in parallel.</p>
+<p>The results can be saved to a file using the <code class="docutils literal notranslate"><span class="pre">save</span></code> method in simulation result.</p>
+</section>
+<dl class="py function">
+<dt class="sig sig-object py" id="pyqsl.add_stderr_logger">
+<span class="sig-prename descclassname"><span class="pre">pyqsl.</span></span><span class="sig-name descname"><span class="pre">add_stderr_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl.html#add_stderr_logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.add_stderr_logger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper for quickly adding a StreamHandler to the logger. Useful for
+debugging. Returns the handler after adding it. Adapted from urllib3.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>level</strong> (<em>int</em>) – </p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>StreamHandler</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading">¶</a></h2>
 </section>
@@ -730,43 +767,6 @@ setting.
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="#pyqsl.simulation_result.SimulationResult" title="pyqsl.simulation_result.SimulationResult"><em>SimulationResult</em></a></p>
-</dd>
-</dl>
-</dd></dl>
-
-</section>
-<section id="module-pyqsl">
-<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-pyqsl" title="Permalink to this heading">¶</a></h2>
-<p>Package for running simulations and saving the results.</p>
-<section id="usage">
-<h3>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h3>
-<p>The simulation task is performed in a user-defined funtion that takes a
-dictionary of the simulation parameters as an input and gives simulation
-result as an output.</p>
-<p>The power of pyqsl is to enable the user to change the values of simulation
-parameters in a loop. This is done in the run() function. The
-run function takes a simulation task as an argument and loops it over with
-all the different parameters defined by the user in the sweeps dictionary.
-The keys of the dictionary are the parameters that are varied
-(they need to exist also in the params dictionary) and the keys are lists of
-parameter values.</p>
-<p>The output of the run function is a SimulationResult instance which attributes
-correspond to different simulation result arrays. The dimensions of the result
-arreys correspond to different parameter configurations. There is also an option
-to perform the simulation in parallel.</p>
-<p>The results can be saved to a file using the <code class="docutils literal notranslate"><span class="pre">save</span></code> method in simulation result.</p>
-</section>
-<dl class="py function">
-<dt class="sig sig-object py" id="pyqsl.add_stderr_logger">
-<span class="sig-prename descclassname"><span class="pre">pyqsl.</span></span><span class="sig-name descname"><span class="pre">add_stderr_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pyqsl.html#add_stderr_logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyqsl.add_stderr_logger" title="Permalink to this definition">¶</a></dt>
-<dd><p>Helper for quickly adding a StreamHandler to the logger. Useful for
-debugging. Returns the handler after adding it. Adapted from urllib3.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>level</strong> (<em>int</em>) – </p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><em>StreamHandler</em></p>
 </dd>
 </dl>
 </dd></dl>
