@@ -272,3 +272,57 @@ def test_add_dimensions_and_run():
     sweeps = {"a": [1, 2]}
     result = pyqsl.run(task, settings, sweeps=sweeps)
     assert result.dataset.y.dims == ("a", "x")
+
+
+def test_run_with_complicated_shapes_in_return():
+    def task(a):
+        return {"b": [a, a, a]}
+    settings = pyqsl.Settings()
+    settings.a = 2
+    result = pyqsl.run(task, settings)
+    assert (result.b == [settings.a, settings.a, settings.a]).all()
+
+    def task(a):
+        return {"b": [[a, a], a, a]}
+    settings = pyqsl.Settings()
+    settings.a = 2
+    result = pyqsl.run(task, settings)
+    assert result.b[0] == [settings.a, settings.a]
+    sweeps = {"a": [0, 1]}
+    result = pyqsl.run(task, settings, sweeps=sweeps)
+    assert result.b[0][0] == [sweeps["a"][0], sweeps["a"][0]]
+
+    def task(a):
+        return [[a, a], a, a]
+    settings = pyqsl.Settings()
+    settings.a = 2
+    result = pyqsl.run(task, settings)
+    assert result.data[0] == [settings.a, settings.a]
+    sweeps = {"a": [0, 1]}
+    result = pyqsl.run(task, settings, sweeps=sweeps)
+    assert result.data[0][0] == [sweeps["a"][0], sweeps["a"][0]]
+
+
+def test_settings_with_reserved_names():
+    def task(data):
+        return data + 1
+    settings = pyqsl.Settings()
+    settings.data = 0
+    result = pyqsl.run(task, settings)
+    assert result.data == settings.data + 1
+    assert result.settings.data == settings.data
+
+    def task(a):
+        return {"copy": a + 1}
+    settings = pyqsl.Settings()
+    settings.a = 0
+    result = pyqsl.run(task, settings)
+    assert result.copy == settings.a + 1
+
+    def task(copy):
+        return {"a": copy + 1}
+    settings = pyqsl.Settings()
+    settings.copy = 0
+    with pytest.raises(TypeError):
+        result = pyqsl.run(task, settings)
+

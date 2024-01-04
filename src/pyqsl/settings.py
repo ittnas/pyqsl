@@ -273,6 +273,8 @@ class Settings:
     The setting values can be accessed as ``settings['a']`` or ``settings.a``.
     The Setting objects can contain relations, which need to be resolved before
     their values can be accessed. This can be done as ``settings.resolve_relations()``.
+
+    Note that settings cannot use the names of methods in :class:`Settings`.
     """
 
     _fields: dict[str, Setting] = dataclasses.field(default_factory=dict)

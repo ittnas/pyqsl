@@ -128,7 +128,7 @@ def _simulation_loop_body(
 
 def run(
     task: Callable[..., TaskOutputType],
-    settings: Settings,
+    settings: Optional[Settings] = None,
     sweeps: Optional[SweepsType] = None,
     pre_process_before_loop: Optional[Callable[[Settings], None]] = None,
     pre_process_in_loop: Optional[Callable[[Settings], None]] = None,
@@ -181,7 +181,7 @@ def run(
         task:
             A reference to the function used for simulation. The function can accept any number of inputs
             and should return either a tuple, a single number or a dictionary.
-        settings: settings for the run
+        settings: Settings for the run.
         sweeps:
             A dictionary containing the parameters that are being swept as keys and arrays of swept
             parameters as values.
@@ -254,6 +254,7 @@ def run(
     # pylint: disable=too-many-locals
     start_time = datetime.datetime.now()
     logger.info("Simulation started at %s", str(start_time))
+    settings = settings or Settings()
     sweeps_std_form = {} if sweeps is None else convert_sweeps_to_standard_form(sweeps)
     dims = [len(sweep_values) for sweep_values in sweeps_std_form.values()]
 
@@ -393,10 +394,23 @@ def _create_dataset(
             data_vars["data"] = (coord_names, output_array_expanded, {})
         else:
             data_vars["data"] = (tuple(coords), reshaped_array_expanded["output"], {})
+
+    if len(dims) == 0:
+        # A special check to convert arrays to zero dimensional numpy arrays to protect
+        # the underlying data structure.
+        for data_var, entry in data_vars.items():
+            data_vars[data_var] = (
+                entry[0],
+                _create_numpy_array_with_fixed_dimensions(entry[1], dims),
+                entry[2],
+            )
     _add_dimensions_to_data_var(
         data_vars,
         settings,
         extended_coords,
+        setting_values=_expand_dict_from_data(
+            reshaped_array_expanded["settings_with_relations"]
+        ),
     )
     for data_var, entry in data_vars.items():
         data_vars[data_var] = (
@@ -427,7 +441,7 @@ def _create_dataset(
                     entry[2],
                 )
             except:  # pylint: disable=bare-except
-                pass
+                data_vars_converted[data_var] = data_vars[data_var]
         dataset = xr.Dataset(
             data_vars=data_vars_converted,
             coords=extended_coords,
@@ -486,6 +500,7 @@ def _add_dimensions_to_data_var(
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
     settings: Settings,
     sweeps: SweepsStandardType,
+    setting_values: dict[str, Any],
 ):
     """
     Adds settings with dimensions as data vars. Also adds dimensions to data_vars with names that align with settings.
@@ -496,7 +511,7 @@ def _add_dimensions_to_data_var(
             for dimension in setting.dimensions:
                 if dimension in data_vars:
                     logger.warning(
-                        "Dimension %s of setting %s is varied, which is not allowed. Skipping dimension.",
+                        "Dimension %s of setting %s is varied, which is not allowed.",
                         dimension,
                         setting.name,
                     )
@@ -512,13 +527,38 @@ def _add_dimensions_to_data_var(
                     )
                 )
             if setting.name not in data_vars:
-                data_vars[setting.name] = (setting.dimensions, setting.value, {})
+                data_vars[setting.name] = (
+                    setting.dimensions,
+                    setting_values[setting.name]
+                    if setting.name in setting_values
+                    else setting.value,
+                    {},
+                )
             else:
                 data_vars[setting.name] = (
                     tuple(data_vars[setting.name][0]) + tuple(setting.dimensions),
                     vstack_and_reshape(data_vars[setting.name][1]),
                     {},
                 )
+
+
+def _create_numpy_array_with_fixed_dimensions(data: Any, dims: tuple[int]) -> Any:
+    """
+    Creates a numpy array from data with dimensions given by dims.
+
+    If directly converting the array to numpy array would result in an array of different
+    shape, an object array is created instead.
+    """
+    data_array = np.array(data)
+    if data_array.shape != dims:
+        data_array = np.zeros(dims, dtype=object)
+        if dims:
+            for ii in range(np.prod(dims)):
+                indices = np.unravel_index(ii, dims)
+                data_array.flat[ii] = data[indices]
+        else:
+            data_array[()] = data
+    return data_array
 
 
 def _make_list_unique(seq):
