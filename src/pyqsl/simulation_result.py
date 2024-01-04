@@ -3,7 +3,7 @@ Defines a class to store simulation results.
 
 Classes:
 
-    SimulationResult
+* SimulationResult
 """
 import logging
 import pickle
@@ -215,7 +215,7 @@ class SimulationResult:
         * Each sweep is converted to a vector-valued :class:`.~Setting`.
         * Each data variable in the dataset is converted to a :class:`.~Setting`.
         * The dimensions of the data variables are listed as dimensions of the corresponding
-          setting.
+        setting.
         * If a Setting with relation appears as a data_var, the relation is turned off.
         """
         settings = self.settings.copy()
