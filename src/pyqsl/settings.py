@@ -9,10 +9,10 @@ Classes:
 from __future__ import annotations
 
 import collections
+import copy
 import dataclasses
 import logging
 import types
-import copy
 from dataclasses import dataclass
 from typing import Any, Optional, Sequence, Union
 
@@ -400,7 +400,8 @@ class Settings:
         intersection = dimensions & set(nodes_with_relation)
         if intersection:
             raise ValueError(
-                f"Settings that are used as dimensions cannot have relations. These are the settings {[setting for setting in intersection]}."
+                "Settings that are used as dimensions cannot have relations. "
+                + f"These are the settings {list(intersection)}."
             )
         return nodes_with_relation
 

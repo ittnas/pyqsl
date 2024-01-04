@@ -223,7 +223,7 @@ class SimulationResult:
             setattr(settings, sweep, value)
         for data_var in self.dataset:
             if data_var not in settings:
-                setattr(settings, data_var, Setting())
+                setattr(settings, str(data_var), Setting())
             setting = settings[data_var]
             setting.value = self.dataset[data_var].values
             setting.dimensions = list(self.dataset[data_var].dims)

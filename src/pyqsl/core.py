@@ -34,17 +34,31 @@ logger = logging.getLogger(__name__)
 def _simulation_loop_body(
     ii: int,
     settings: Settings,
-    dims,
+    dims: tuple[int, ...],
     sweeps: SweepsStandardType,
-    pre_process_in_loop,
-    post_processs_in_loop,
-    task,
+    pre_process_in_loop: Callable | None,
+    post_processs_in_loop: Callable | None,
+    task: Callable | None,
 ) -> dict[str, Any]:
-    # The main loop
+    """
+    This function is responsible for all the actions that happen for each point in simulation.
+
+    Args:
+        ii: index of the point.
+        settings:
+            Settings for index ``ii`` in the simulation. At this point, the relations have not been resolved, yet.
+        dims: Sweep dimensions.
+        sweeps: Sweeps for the simulation.
+        pre_process_in_loop: Callback to do processing before the task is called.
+        post_process_in_loop: Callback to do post-processing after the task is called.
+        task: The main task to run.
+    Returns:
+        The results in a dictionary.
+    """
+    # pylint: disable=too-many-branches
     # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
     original_settings = settings
     settings = copy.deepcopy(original_settings)
-    # settings_dict = settings.to_dict()
     current_ind = np.unravel_index(ii, dims)
     sweep_array_index = 0
     for sweep_name, value in sweeps.items():
@@ -55,10 +69,8 @@ def _simulation_loop_body(
     if pre_process_in_loop:
         pre_process_in_loop(settings)
 
-        # params_private now contains all the required information to run the simulation
     # Resolve relations
-    if task is None:
-        task = lambda: {}
+    task = task or (lambda: {})  # pylint: disable=unnecessary-lambda-assignment
     settings_with_relations = settings.resolve_relations()
     settings_dict = settings.to_dict()
     invalid_args = _get_invalid_args(task, settings_dict)
@@ -66,6 +78,8 @@ def _simulation_loop_body(
     valid_settings = {
         key: settings_dict[key] for key in settings_dict if key not in invalid_args
     }
+
+    # Call the task function. If "settings" is one of the arguments, substitute that with the settings object.
     if _settings_in_args(task):
         valid_settings["settings"] = settings
     output = task(**valid_settings)
@@ -87,15 +101,18 @@ def _simulation_loop_body(
                 continue
             comparison = False
             try:
+                # Comparison for normal setting values.
                 comparison = setting.value != original_settings[name].value
-                if comparison:
+                if (
+                    comparison
+                ):  # This is necessary to catch results that cannot be compared.
                     pass
             except Exception:  # pylint: disable=broad-exception-caught
                 try:
+                    # Comparison for array-like setting values.
                     comparison = (setting.value != original_settings[name].value).any()
                 except Exception:  # pylint: disable=broad-exception-caught
                     pass
-
             if comparison:
                 new_output[name] = setting.value
         output = new_output

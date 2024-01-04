@@ -12,9 +12,9 @@ Classes:
     * LookupTable
     * Function
 """
+import copy
 import dataclasses
 import inspect
-import copy
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional, Union
