@@ -176,3 +176,12 @@ def test_dimensions():
         settings.a.dimensions = "abab"
     with pytest.raises(TypeError):
         settings.a.dimensions = [["abab"]]
+
+
+def test_indexing():
+    settings = pyqsl.Settings()
+    settings["c"] = 2
+    assert settings.c == 2
+    settings["d"] = pyqsl.Setting(value=3, dimensions=["b"])
+    assert settings.d.value == 3
+    assert settings.d.dimensions == ["b"]

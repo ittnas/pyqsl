@@ -99,8 +99,11 @@ class SimulationResult:
             items = items + ["settings"] + ["sweeps"]
         return items
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.dataset)
+
+    def __repr__(self) -> str:
+        return repr(self.dataset)
 
     def save(self, path: str):
         """

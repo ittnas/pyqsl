@@ -46,16 +46,18 @@ class Setting:
     name: Optional[str] = None
     value: Optional[Any] = None
     unit: str = ""
-    relation: Optional["Relation"] = None
     use_relation: bool = False
-    dimensions: list[str] = dataclasses.field(default_factory=list)
     _relation: Optional["Relation"] = dataclasses.field(
         init=False, repr=False, default=None
     )
-    _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
+    relation: Optional["Relation"] = None
+    # The order of the values matter. _dimensions has to be first so that it is
+    # initialized before the value is changed by the setter.
     _dimensions: list[str] = dataclasses.field(
         init=False, repr=False, default_factory=list
     )
+    dimensions: list[str] = dataclasses.field(default_factory=list)
+    _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
 
     def __add__(self, other):
         return self.value + other
@@ -231,7 +233,9 @@ class Setting:
             TypeError if wrong datatype is used to initialize the setting.
         """
         if isinstance(value, property):
-            value = []
+            return
+            # value = []
+
         new_dimension_list: list[str] = []
         sequence_of_dimensions: Sequence[str | Setting]
         if isinstance(value, str):
@@ -370,6 +374,9 @@ class Settings:
 
     def __getitem__(self, key: str):
         return self._fields[key]
+
+    def __setitem__(self, key: str, value: Any | Setting):
+        setattr(self, key, value)
 
     # def resolve_relations(self) -> Self: #  Needs python 3.11
     def resolve_relations(self) -> list[str]:

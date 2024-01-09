@@ -1,7 +1,8 @@
+import numpy as np
 import pytest
 
 import pyqsl
-import numpy as np
+
 
 def test_that_abstract_relation_cannot_be_created():
     with pytest.raises(TypeError):
@@ -214,15 +215,18 @@ def test_function():
     settings = pyqsl.Settings()
     settings.a = [0, 1]
     settings.b = None
-    settings.b.relation = pyqsl.Function(function=np.mean, parameters={'a': 'a'})
+    settings.b.relation = pyqsl.Function(function=np.mean, parameters={"a": "a"})
     parameters_with_relations = settings.resolve_relations()
-    assert parameters_with_relations == ['b']
+    assert parameters_with_relations == ["b"]
     assert settings.b.value == pytest.approx(0.5)
 
     def my_own_function(b, c, d):
         return b + c + d
+
     settings.e = None
-    settings.e.relation = pyqsl.Function(function=my_own_function, function_arguments={'c': 0.5, 'd': 1.0})
+    settings.e.relation = pyqsl.Function(
+        function=my_own_function, function_arguments={"c": 0.5, "d": 1.0}
+    )
     parameters_with_relations = settings.resolve_relations()
-    assert parameters_with_relations == ['b', 'e']
+    assert parameters_with_relations == ["b", "e"]
     assert settings.e.value == pytest.approx(2.0)

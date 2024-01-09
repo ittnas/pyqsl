@@ -165,9 +165,7 @@ def test_task_that_returns_settings(ab_settings):
         settings.c = a + b
         return settings
 
-    result = pyqsl.run(
-        task, ab_settings, sweeps=sweeps
-    )
+    result = pyqsl.run(task, ab_settings, sweeps=sweeps)
     assert result.c.shape == (3, 5)
 
 
@@ -181,9 +179,7 @@ def test_task_that_uses_settings(ab_settings):
         settings.c = settings.a + settings.b
         return settings
 
-    result = pyqsl.run(
-        task, ab_settings, sweeps=sweeps
-    )
+    result = pyqsl.run(task, ab_settings, sweeps=sweeps)
     assert result.c.shape == (3, 5)
 
 
@@ -277,6 +273,7 @@ def test_add_dimensions_and_run():
 def test_run_with_complicated_shapes_in_return():
     def task(a):
         return {"b": [a, a, a]}
+
     settings = pyqsl.Settings()
     settings.a = 2
     result = pyqsl.run(task, settings)
@@ -284,6 +281,7 @@ def test_run_with_complicated_shapes_in_return():
 
     def task(a):
         return {"b": [[a, a], a, a]}
+
     settings = pyqsl.Settings()
     settings.a = 2
     result = pyqsl.run(task, settings)
@@ -294,6 +292,7 @@ def test_run_with_complicated_shapes_in_return():
 
     def task(a):
         return [[a, a], a, a]
+
     settings = pyqsl.Settings()
     settings.a = 2
     result = pyqsl.run(task, settings)
@@ -306,6 +305,7 @@ def test_run_with_complicated_shapes_in_return():
 def test_settings_with_reserved_names():
     def task(data):
         return data + 1
+
     settings = pyqsl.Settings()
     settings.data = 0
     result = pyqsl.run(task, settings)
@@ -314,6 +314,7 @@ def test_settings_with_reserved_names():
 
     def task(a):
         return {"copy": a + 1}
+
     settings = pyqsl.Settings()
     settings.a = 0
     result = pyqsl.run(task, settings)
@@ -321,8 +322,20 @@ def test_settings_with_reserved_names():
 
     def task(copy):
         return {"a": copy + 1}
+
     settings = pyqsl.Settings()
     settings.copy = 0
     with pytest.raises(TypeError):
         result = pyqsl.run(task, settings)
 
+
+def test_dimensions_with_relations():
+    settings = pyqsl.Settings()
+    settings.a = [0, 1]
+    settings.y = pyqsl.Setting(value=2, dimensions=["a"])
+    assert settings.y.dimensions == ["a"]
+    settings = pyqsl.Settings()
+    settings.a = [0, 1]
+    settings.y = 2
+    settings.y.dimensions = ["a"]
+    assert settings.y.dimensions == ["a"]

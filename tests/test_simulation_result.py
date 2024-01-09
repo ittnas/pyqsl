@@ -82,8 +82,8 @@ def test_to_settings():
     settings = pyqsl.Settings()
     settings.a = [0, 1, 2]
     settings.b = None
-    settings.b.relation = 'a'
-    settings.b.dimensions = ['a']
+    settings.b.relation = "a"
+    settings.b.dimensions = ["a"]
     settings.c = 2
 
     def task(a, b, c):
@@ -91,10 +91,10 @@ def test_to_settings():
         settings.d = np.mean(a) + np.mean(b) + c
         return settings
 
-    result = pyqsl.run(task, settings=settings, sweeps={'c': [0, 1, 2]})
+    result = pyqsl.run(task, settings=settings, sweeps={"c": [0, 1, 2]})
     settings = result.to_settings()
-    assert settings.d.dimensions == ['c']
-    assert settings.b.dimensions == ['a']
+    assert settings.d.dimensions == ["c"]
+    assert settings.b.dimensions == ["a"]
 
     def new_task(d):
         settings = pyqsl.Settings()
@@ -102,6 +102,6 @@ def test_to_settings():
         return settings
 
     settings.e = None
-    settings.e.dimensions = ['c']
+    settings.e.dimensions = ["c"]
     new_settings = pyqsl.run(new_task, settings=settings).to_settings()
-    assert new_settings.e.dimensions == ['c']
+    assert new_settings.e.dimensions == ["c"]
