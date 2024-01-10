@@ -411,6 +411,7 @@ def _create_dataset(
         setting_values=_expand_dict_from_data(
             reshaped_array_expanded["settings_with_relations"]
         ),
+        dims=dims,
     )
     for data_var, entry in data_vars.items():
         data_vars[data_var] = (
@@ -501,11 +502,13 @@ def _add_dimensions_to_data_var(
     settings: Settings,
     sweeps: SweepsStandardType,
     setting_values: dict[str, Any],
+    dims,
 ):
     """
     Adds settings with dimensions as data vars. Also adds dimensions to data_vars with names that align with settings.
     """
     # Add setting dimensions
+    slice_for_setting_values = tuple([0] * len(dims))
     for setting in settings:
         if setting.dimensions:
             for dimension in setting.dimensions:
@@ -530,7 +533,7 @@ def _add_dimensions_to_data_var(
                 data_vars[setting.name] = (
                     setting.dimensions,
                     # vstack_and_reshape(setting_values[setting.name])
-                    setting_values[setting.name]
+                    setting_values[setting.name][slice_for_setting_values]
                     if setting.name in setting_values
                     else setting.value,
                     {},

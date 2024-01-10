@@ -339,3 +339,12 @@ def test_dimensions_with_relations():
     settings.y = 2
     settings.y.dimensions = ["a"]
     assert settings.y.dimensions == ["a"]
+    settings = pyqsl.Settings()
+    settings.a = [0, 1]
+    settings.b = pyqsl.Setting(relation='a', dimensions=['a'])
+    settings.c = 0
+    result = pyqsl.run(None, settings=settings)
+    assert result.dataset.b.shape == (2,)
+    result = pyqsl.run(None, settings=settings, sweeps={'c': [0, 1, 2]})
+    assert result.dataset.b.shape == (2,)
+    assert result.dataset.c.shape == (3,)
