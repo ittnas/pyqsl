@@ -467,6 +467,7 @@ class Settings:
             # There is a weird functionality in dataclasses with init=False, which prevents
             # dimensions from being copied.
             new_settings[setting.name].dimensions = copy.copy(setting.dimensions)
+            new_settings[setting.name].use_relation = setting.use_relation
         return new_settings
 
 
