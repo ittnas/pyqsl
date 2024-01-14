@@ -41,6 +41,7 @@ The following simple example demonstrates how pyqsl can be used to run tasks and
 .. code-block:: python
   :linenos:
 
+
    import pyqsl
    import numpy as np
    import matplotlib.pyplot as plt
@@ -57,6 +58,7 @@ The following simple example demonstrates how pyqsl can be used to run tasks and
    result = pyqsl.run(cosine, settings=settings, sweeps=sweeps)
    result.dataset.data.plot()
    plt.show()
+
 
 This above calculates the value of the cosine function when the input parameters ``amplitude`` and ``time`` are varied. Additionally, there is a relation set for frequency, which sets its value to depend on amplitude so that cosine oscillates faster for higher amplitude values. Finally, the result is plotted using ``result.dataset.data.plot()``.
 
