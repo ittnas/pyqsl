@@ -39,26 +39,23 @@ Usage example
 The following simple example demonstrates how pyqsl can be used to run tasks and sweep over model parameters. Let's first create a simple cosine function which values we want to evalaute.
 
 .. code-block:: python
-  :linenos:
 
-
-   import pyqsl
-   import numpy as np
-   import matplotlib.pyplot as plt
-   
-   def cosine(amplitude, phase, frequency, time):
-      return amplitude*np.cos(2*np.pi*(time*frequency + phase))
-
-   settings = pyqsl.Settings()
-   settings.amplitude = 2
-   settings.phase = np.pi
-   settings.frequency = pyqsl.Setting(relation='2*amplitude', unit='Hz')
-   settings.time = pyqsl.Setting(unit='s')
-   sweeps = {'amplitude': np.linspace(0, 1, 101), 'time': np.linspace(0, 5, 101)}
-   result = pyqsl.run(cosine, settings=settings, sweeps=sweeps)
-   result.dataset.data.plot()
-   plt.show()
-
+    import pyqsl
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    def cosine(amplitude, phase, frequency, time):
+        return amplitude*np.cos(2*np.pi*(time*frequency + phase))
+    
+    settings = pyqsl.Settings()
+    settings.amplitude = 2
+    settings.phase = np.pi
+    settings.frequency = pyqsl.Setting(relation='2*amplitude', unit='Hz')
+    settings.time = pyqsl.Setting(unit='s')
+    sweeps = {'amplitude': np.linspace(0, 1, 101), 'time': np.linspace(0, 5, 101)}
+    result = pyqsl.run(cosine, settings=settings, sweeps=sweeps)
+    result.dataset.data.plot()
+    plt.show()
 
 This above calculates the value of the cosine function when the input parameters ``amplitude`` and ``time`` are varied. Additionally, there is a relation set for frequency, which sets its value to depend on amplitude so that cosine oscillates faster for higher amplitude values. Finally, the result is plotted using ``result.dataset.data.plot()``.
 
