@@ -5,7 +5,7 @@ Classes:
   * ManyToManyRelation
 """
 import dataclasses
-from typing import Any, Union
+from typing import Any
 
 from .relation import Function, Relation
 
@@ -41,7 +41,6 @@ class EvaluatedManyToManyRelation(Relation):
         """
         Does nothing when evaluated.
         """
-        pass
 
     def __str__(self) -> str:
         return f"source: {self.source}"

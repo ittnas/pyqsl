@@ -178,7 +178,7 @@ class Setting:
         """
         Returns True if relation is not None and use_relation is True.
         """
-        return self.relation is not None and self.use_relation
+        return self.relation is not None and bool(self.use_relation)
 
     @property  # type: ignore[no-redef]
     def relation(self) -> "Relation" | None:
@@ -424,14 +424,12 @@ class Settings:
             if setting.has_active_relation() and not isinstance(
                 setting.relation, EvaluatedManyToManyRelation
             ):
-                logger.debug(f"{setting} - {setting.relation}")
                 setting.relation.resolve(self)
                 nodes_with_relation.append(node)
             elif setting.name in many_to_many_relation_map:
                 relation = many_to_many_relation_map[setting.name]
                 if relation not in evaluated_many_to_many_relations:
                     relation.resolve(self)
-                    logger.debug(f"{relation} - {relation.evaluated_value}")
                     for (
                         output_setting_name,
                         function_argument_name_or_index,
@@ -439,13 +437,13 @@ class Settings:
                         dummy_relation = EvaluatedManyToManyRelation(
                             parameters={}, source=str(relation)
                         )
-                        dummy_relation.evaluated_value = relation.evaluated_value[
-                            function_argument_name_or_index
-                        ]
+                        if relation.evaluated_value is not None:
+                            dummy_relation.evaluated_value = relation.evaluated_value[
+                                function_argument_name_or_index
+                            ]
+                        else:
+                            dummy_relation.evaluated_value = None
                         self[output_setting_name].relation = dummy_relation
-                        logger.debug(
-                            f"{output_setting_name} - {function_argument_name_or_index} - {relation.evaluated_value[function_argument_name_or_index]}"
-                        )
                         nodes_with_relation.append(output_setting_name)
                     evaluated_many_to_many_relations.add(relation)
 
@@ -480,7 +478,7 @@ class Settings:
                     relation_graph.add_node(dependent_setting)
                 if dependent_setting != setting.name:
                     relation_graph.add_edge(
-                        dependent_setting, setting.name, name=relation.__str__()
+                        dependent_setting, setting.name, name=str(relation)
                     )
         for relation in self._many_to_many_relations:
             dependent_settings = relation.get_mapped_setting_names()
@@ -494,10 +492,11 @@ class Settings:
                         self[output_setting].relation, EvaluatedManyToManyRelation
                     ):
                         raise ValueError(
-                            f'Output "{output_setting}" of a many-to-many relation "{relation}" overlaps with an existing relation "{self[output_setting].relation}".'
+                            f'Output "{output_setting}" of a many-to-many relation "{relation}"'
+                            + f' overlaps with an existing relation "{self[output_setting].relation}".'
                         )
                     relation_graph.add_edge(
-                        dependent_setting, output_setting, name=relation.__str__()
+                        dependent_setting, output_setting, name=(relation)
                     )
         return relation_graph
 
@@ -588,14 +587,20 @@ def _hierarchical_layout(
     Layout for plotting DiGraph by generations.
 
     Partial credits to chatGPT which provided a completely incorrect solution.
-    """
-    import networkx as nx
 
+    Args:
+        graph: Graph for which the node positions are calculated.
+        dx: Space between the nodes in the same generation.
+        dy: Space between the nodes in different genrations.
+        orientation: If 'h', the same generation is horizontal, otherwise vertical.
+
+    Returns:
+        A dict which keys are the nodes and the values are the coordinates for the nodes.
+    """
     pos = {}
     nbr_y = 0
     nbr_x = 0
     for generation in nx.topological_generations(graph):
-        logger.debug(generation)
         nbr_y = nbr_y + 1
         nbr_x = max(nbr_x, len(generation))
     if dx is None:

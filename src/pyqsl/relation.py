@@ -125,8 +125,7 @@ class Relation(ABC):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, type(self)):
             return self.identifier == other.identifier
-        else:
-            return False
+        return False
 
 
 @dataclasses.dataclass
