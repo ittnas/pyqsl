@@ -16,25 +16,11 @@ For manual installation, first clone the repository and enter the directory. The
   git clone https://github.com/ittnas/pyqsl.git
   pip install ./pyqsl
 
-For development, install also the tools needed for testing ::
-
-  pip install -e ./pyqsl[testing]
-
 For running the examples, the additional requirements can be installed as ::
 
   pip install pyqsl[examples]
-  
-For automated document generation the library uses Sphinx. To generate the documentation install sphinx and then navigate to doc/ directory. To update the API doc strings, run ::
 
-  sphinx-apidoc -f -o source/ ../
-
-and then build the docs with ::
-
-  make html
-
-to generate the html documentation. The documentation can be found in doc/build/html.
-
-Usage example
+Example
 -------------
 The following simple example demonstrates how pyqsl can be used to run tasks and sweep over model parameters. Let's first create a simple cosine function which values we want to evalaute.
 
@@ -58,6 +44,22 @@ The following simple example demonstrates how pyqsl can be used to run tasks and
     plt.show()
 
 This above calculates the value of the cosine function when the input parameters ``amplitude`` and ``time`` are varied. Additionally, there is a relation set for frequency, which sets its value to depend on amplitude so that cosine oscillates faster for higher amplitude values. Finally, the result is plotted using ``result.dataset.data.plot()``.
+
+Development
+-----------
+For development, install also the tools needed for testing ::
+
+  pip install -e ./pyqsl[testing]
+
+For automated document generation the library uses Sphinx. To generate the documentation install sphinx and then navigate to doc/ directory. To update the API doc strings, run ::
+
+  sphinx-apidoc -f -o source/ ../
+
+and then build the docs with ::
+
+  make html
+
+to generate the html documentation. The documentation can be found in doc/build/html.
 
 Issues
 ------
