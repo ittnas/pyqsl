@@ -28,6 +28,7 @@ from logging import NullHandler
 import pint_xarray
 
 from .core import run  # pylint: disable=cyclic-import
+from .many_to_many_relation import ManyToManyRelation
 from .relation import (  # pylint: disable=cyclic-import
     Equation,
     Function,

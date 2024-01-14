@@ -15,6 +15,7 @@ Classes:
 import copy
 import dataclasses
 import inspect
+import itertools
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional, Union
@@ -54,6 +55,9 @@ class Relation(ABC):
         init=False, repr=False
     )
     evaluated_value: Optional[Any] = None
+    identifier: int = dataclasses.field(
+        default_factory=itertools.count().__next__, init=False, repr=False
+    )
 
     @property  # type: ignore[no-redef]
     def parameters(self) -> dict[str, Union[str, "Relation"]]:
@@ -117,6 +121,12 @@ class Relation(ABC):
                 parameter_values[parameter] = settings[setting_name_or_relation].value
         value = self.evaluate(**parameter_values)
         self.evaluated_value = value
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, type(self)):
+            return self.identifier == other.identifier
+        else:
+            return False
 
 
 @dataclasses.dataclass
@@ -279,3 +289,6 @@ class Function(Relation):
         arguments = copy.copy(self.function_arguments)
         arguments.update(parameter_values)
         return self.function(**arguments)
+
+    def __str__(self):
+        return f"F: {self.function.__name__}"

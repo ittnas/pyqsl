@@ -533,7 +533,9 @@ def _add_dimensions_to_data_var(
                 data_vars[setting.name] = (
                     setting.dimensions,
                     # vstack_and_reshape(setting_values[setting.name])
-                    setting_values[setting.name][slice_for_setting_values]
+                    vstack_and_reshape(
+                        setting_values[setting.name][slice_for_setting_values]
+                    )
                     if setting.name in setting_values
                     else setting.value,
                     {},

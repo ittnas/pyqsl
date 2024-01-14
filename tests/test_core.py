@@ -341,10 +341,20 @@ def test_dimensions_with_relations():
     assert settings.y.dimensions == ["a"]
     settings = pyqsl.Settings()
     settings.a = [0, 1]
-    settings.b = pyqsl.Setting(relation='a', dimensions=['a'])
+    settings.b = pyqsl.Setting(relation="a", dimensions=["a"])
     settings.c = 0
     result = pyqsl.run(None, settings=settings)
     assert result.dataset.b.shape == (2,)
-    result = pyqsl.run(None, settings=settings, sweeps={'c': [0, 1, 2]})
+    result = pyqsl.run(None, settings=settings, sweeps={"c": [0, 1, 2]})
     assert result.dataset.b.shape == (2,)
     assert result.dataset.c.shape == (3,)
+
+
+def test_that_setting_shape_is_correct():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = 3
+    settings.c = pyqsl.Setting(relation="a + b")
+    result = pyqsl.run(None, settings, sweeps=dict(a=np.linspace(0, 1, 3), b=[0, 2]))
+    assert result.c.shape == (3, 2)
+    result.dataset.c.plot()
