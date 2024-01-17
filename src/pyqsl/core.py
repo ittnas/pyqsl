@@ -10,7 +10,7 @@ import inspect
 import logging
 import multiprocessing as mp
 from functools import partial
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 import numpy as np
 import psutil
@@ -38,7 +38,7 @@ def _simulation_loop_body(
     sweeps: SweepsStandardType,
     pre_process_in_loop: Callable | None,
     post_processs_in_loop: Callable | None,
-    task: Callable | None,
+    task: Callable | None | list[Callable],
 ) -> dict[str, Any]:
     """
     This function is responsible for all the actions that happen for each point in simulation.
@@ -73,52 +73,63 @@ def _simulation_loop_body(
     task = task or (lambda: {})  # pylint: disable=unnecessary-lambda-assignment
     settings_with_relations = settings.resolve_relations()
     settings_dict = settings.to_dict()
-    invalid_args = _get_invalid_args(task, settings_dict)
-    logger.debug("Removing invalid args (%s) from function.", str(invalid_args))
-    valid_settings = {
-        key: settings_dict[key] for key in settings_dict if key not in invalid_args
-    }
+    if not isinstance(task, list):
+        task_list = [task]
+    else:
+        task_list = task
 
-    # Call the task function. If "settings" is one of the arguments, substitute that with the settings object.
-    if _settings_in_args(task):
-        valid_settings["settings"] = settings
-    output = task(**valid_settings)
-
-    if post_processs_in_loop:
-        output = post_processs_in_loop(output, settings)
-
-    # If any setting has been changed, add as a result.
-    if isinstance(output, Settings):
-        new_output = {}
-        for setting in output:
-            name = setting.name
-            if name is None:
-                continue
-            if name in sweeps:
-                continue
-            if setting not in original_settings:
-                new_output[name] = setting.value
-                continue
-            comparison = False
-            try:
-                # Comparison for normal setting values.
-                comparison = setting.value != original_settings[name].value
-                if (
-                    comparison
-                ):  # This is necessary to catch results that cannot be compared.
-                    pass
-            except Exception:  # pylint: disable=broad-exception-caught
+    final_result = {}
+    for current_task in task_list:
+        invalid_args = _get_invalid_args(current_task, settings_dict)
+        logger.debug("Removing invalid args (%s) from function.", str(invalid_args))
+        valid_settings = {
+            key: settings_dict[key] for key in settings_dict if key not in invalid_args
+        }
+        
+        # Call the task function. If "settings" is one of the arguments, substitute that with the settings object.
+        if _settings_in_args(current_task):
+            valid_settings["settings"] = settings
+        output = current_task(**valid_settings)
+        
+        if post_processs_in_loop:
+            output = post_processs_in_loop(output, settings)
+            
+            # If any setting has been changed, add as a result.
+        if isinstance(output, Settings):
+            new_output = {}
+            for setting in output:
+                name = setting.name
+                if name is None:
+                    continue
+                if name in sweeps:
+                    continue
+                if setting not in original_settings:
+                    new_output[name] = setting.value
+                    continue
+                comparison = False
                 try:
-                    # Comparison for array-like setting values.
-                    comparison = (setting.value != original_settings[name].value).any()
+                    # Comparison for normal setting values.
+                    comparison = setting.value != original_settings[name].value
+                    if (
+                            comparison
+                    ):  # This is necessary to catch results that cannot be compared.
+                        pass
                 except Exception:  # pylint: disable=broad-exception-caught
-                    pass
-            if comparison:
-                new_output[name] = setting.value
-        output = new_output
+                    try:
+                        # Comparison for array-like setting values.
+                        comparison = (setting.value != original_settings[name].value).any()
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        pass
+                    if comparison:
+                        new_output[name] = setting.value
+            output = new_output
+        if isinstance(output, dict):
+            final_result.update(output)
+        else:
+            final_result = output
 
     output_as_dict = {
-        "output": output,
+        "output": final_result,
         "settings_with_relations": {
             key: settings_dict[key] for key in settings_with_relations
         },
@@ -127,7 +138,7 @@ def _simulation_loop_body(
 
 
 def run(
-    task: Callable[..., TaskOutputType],
+    task: None | Callable[..., TaskOutputType],
     settings: Optional[Settings] = None,
     sweeps: Optional[SweepsType] = None,
     pre_process_before_loop: Optional[Callable[[Settings], None]] = None,
@@ -180,7 +191,8 @@ def run(
     Args:
         task:
             A reference to the function used for simulation. The function can accept any number of inputs
-            and should return either a tuple, a single number or a dictionary.
+            and should return either a tuple, a single number or a dictionary. Can also be a sequence of
+            tasks, in which case all of them are executed in order.
         settings: Settings for the run.
         sweeps:
             A dictionary containing the parameters that are being swept as keys and arrays of swept
@@ -270,6 +282,8 @@ def run(
     if parallelize and windows_and_jupyter:
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
+        if not isinstance(task, Callable):
+            raise ValueError(f"When using 'jupyter_compatibility_mode' task must be Callable. Got {type(task)}.")
         with open("./tmp_simulation_task.py", "w", encoding="utf-8") as file:
             file.write(
                 inspect.getsource(task).replace(task.__name__, "simulation_task")
@@ -430,6 +444,10 @@ def _create_dataset(
     settings_resolved = settings.copy()
     settings_resolved.resolve_relations()
 
+    # Remove sweeps from datavars.
+    for sweep in sweeps:
+        if sweep in data_vars:
+            del data_vars[sweep]
     # Try convert data that has numpy object type to any natural datatype.
     # If conversion cannot be done, retain in original form.
     try:
@@ -532,7 +550,6 @@ def _add_dimensions_to_data_var(
             if setting.name not in data_vars:
                 data_vars[setting.name] = (
                     setting.dimensions,
-                    # vstack_and_reshape(setting_values[setting.name])
                     vstack_and_reshape(
                         setting_values[setting.name][slice_for_setting_values]
                     )
