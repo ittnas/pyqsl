@@ -59,6 +59,7 @@ class Setting:
     )
     dimensions: list[str] = dataclasses.field(default_factory=list)
     _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
+    description: Optional[str] = ""
 
     def __post_init__(self):
         if self.use_relation is None:
@@ -318,6 +319,12 @@ class Settings:
                     output
                     + f", value={setting._value}"  # pylint: disable=protected-access
                 )
+            if setting.description:
+                splits = setting.description.split(".", 1)
+                n_letters = 40
+                description = splits[0] + "." if len(splits)>1 else splits[0]
+                description = description[:n_letters] + ".." if len(description) > (n_letters + 2) else description
+                output = output + " - " + description
             output = output + "\n"
         return output
 

@@ -251,3 +251,14 @@ def test_many_to_many_relations_with_dict():
     assert settings.c == 2
     assert settings.d == 3
     assert settings.e == 5
+
+
+def test_description():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.a.description = "The value of a."
+    assert settings.a.description == "The value of a."
+    assert settings._to_string().endswith("The value of a.\n")
+    settings.b = 2
+    settings.b.description = "The value of b. This continues."
+    assert settings._to_string().endswith("The value of b.\n")
