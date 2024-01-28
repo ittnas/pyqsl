@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, Sequence, Union
 
 import networkx as nx
+import xarray as xr
 
 logger = logging.getLogger(__name__)
 # pyright: reportPropertyTypeMismatch=false
@@ -550,6 +551,26 @@ class Settings:
             return []
         descendants = nx.descendants(relation_hierarchy, setting.name)
         return sorted(descendants)
+
+    def get_needed_settings(
+        self, setting: Setting, relation_hierarchy: Optional[nx.DiGraph] = None
+    ) -> list[str]:
+        """
+        Returns the names for settings needed to evaluate the given setting.
+
+        Args:
+            setting: Setting for which needed settings are searched for.
+            relation_hierarchy: Relation hierarchy for the settings tree. If None, a new hierarchy is built.
+
+        Returns:
+            List of all settings needed to evaluate the given setting.
+        """
+        if relation_hierarchy is None:
+            relation_hierarchy = self.get_relation_hierarchy()
+        if setting.name not in relation_hierarchy:
+            return []
+        ancestors = nx.ancestors(relation_hierarchy, setting.name)
+        return sorted(ancestors)
 
     def copy(self):
         """

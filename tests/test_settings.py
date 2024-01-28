@@ -262,3 +262,16 @@ def test_description():
     settings.b = 2
     settings.b.description = "The value of b. This continues."
     assert settings._to_string().endswith("The value of b.\n")
+
+
+def test_get_needed_settings():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = 3
+    settings.c = pyqsl.Setting(relation='a')
+    settings.d = pyqsl.Setting(relation='b+c')
+    settings.e = pyqsl.Setting(relation='c+d')
+    assert settings.get_needed_settings(settings.a) == []
+    assert settings.get_needed_settings(settings.c) == ['a']
+    assert settings.get_needed_settings(settings.d) == ['a', 'b', 'c']
+    assert settings.get_needed_settings(settings.e) == ['a', 'b', 'c', 'd']

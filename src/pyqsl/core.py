@@ -24,6 +24,8 @@ from pyqsl.common import (
     TaskOutputType,
     convert_sweeps_to_standard_form,
     vstack_and_reshape,
+    create_numpy_array_with_fixed_dimensions,
+    resolve_relations_with_sweeps,
 )
 from pyqsl.settings import Settings
 from pyqsl.simulation_result import SimulationResult
@@ -34,11 +36,12 @@ logger = logging.getLogger(__name__)
 def _simulation_loop_body(
     ii: int,
     settings: Settings,
-    dims: tuple[int, ...],
+    dims: list[int],
     sweeps: SweepsStandardType,
     pre_process_in_loop: Callable | None,
     post_processs_in_loop: Callable | None,
     task: Callable | None | list[Callable],
+    resolved_settings_dataset: xr.Dataset,
 ) -> dict[str, Any]:
     """
     This function is responsible for all the actions that happen for each point in simulation.
@@ -52,26 +55,33 @@ def _simulation_loop_body(
         pre_process_in_loop: Callback to do processing before the task is called.
         post_process_in_loop: Callback to do post-processing after the task is called.
         task: The main task to run.
+        resolved_settings_dataset: Dataset containing the setting values for sweeps.
+  
     Returns:
         The results in a dictionary.
     """
     # pylint: disable=too-many-branches
     # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
     original_settings = settings
-    settings = copy.deepcopy(original_settings)
+    settings = original_settings.copy()
     current_ind = np.unravel_index(ii, dims)
     sweep_array_index = 0
     for sweep_name, value in sweeps.items():
         # Update all the parameters
         setattr(settings, sweep_name, value[int(current_ind[sweep_array_index])])
         sweep_array_index = sweep_array_index + 1
+    for setting_name in resolved_settings_dataset:
+        # Get the setting value from previously evaluated setting
+        list_descriptor = tuple([current_ind[ii] for ii, sweep_name in enumerate(sweeps.keys()) if sweep_name in resolved_settings_dataset[setting_name].dims])
+        setting_value = resolved_settings_dataset[setting_name].values[list_descriptor]
+        setattr(settings, setting_name, setting_value)
 
+    #settings_with_relations = settings.resolve_relations()
     if pre_process_in_loop:
         pre_process_in_loop(settings)
 
     # Resolve relations
     task = task or (lambda: {})  # pylint: disable=unnecessary-lambda-assignment
-    settings_with_relations = settings.resolve_relations()
     settings_dict = settings.to_dict()
     if not isinstance(task, list):
         task_list = [task]
@@ -94,7 +104,7 @@ def _simulation_loop_body(
         if post_processs_in_loop:
             output = post_processs_in_loop(output, settings)
             
-            # If any setting has been changed, add as a result.
+        # If any setting has been changed, add as a result.
         if isinstance(output, Settings):
             new_output = {}
             for setting in output:
@@ -130,8 +140,7 @@ def _simulation_loop_body(
 
     output_as_dict = {
         "output": final_result,
-        "settings_with_relations": {
-            key: settings_dict[key] for key in settings_with_relations
+        "settings_with_relations": { # TODO: REMOVE THIS
         },
     }
     return output_as_dict
@@ -267,6 +276,7 @@ def run(
     start_time = datetime.datetime.now()
     logger.info("Simulation started at %s", str(start_time))
     settings = settings or Settings()
+    settings = copy.deepcopy(settings)
     sweeps_std_form = {} if sweeps is None else convert_sweeps_to_standard_form(sweeps)
     dims = [len(sweep_values) for sweep_values in sweeps_std_form.values()]
 
@@ -274,7 +284,6 @@ def run(
     logger.info("Sweep dimensions: %s.", str(dims))
     output_array: list[Optional[dict[str, Any]]] = [None] * N_tot
 
-    settings = copy.deepcopy(settings)
     if pre_process_before_loop:
         pre_process_before_loop(settings)
 
@@ -295,6 +304,9 @@ def run(
     else:
         simulation_task = task
 
+    settings.resolve_relations()
+    resolved_settings_dataset = resolve_relations_with_sweeps(settings=settings, sweeps=sweeps_std_form)
+
     simulation_loop_body_partial = partial(
         _simulation_loop_body,
         settings=settings,
@@ -303,6 +315,7 @@ def run(
         pre_process_in_loop=pre_process_in_loop,
         post_processs_in_loop=post_process_in_loop,
         task=simulation_task,
+        resolved_settings_dataset=resolved_settings_dataset,
     )
     if parallelize:
         if n_cores is not None:
@@ -334,6 +347,7 @@ def run(
         sweeps_std_form,
         expand_data=expand_data,
         dims=dims,
+        resolved_settings_dataset=resolved_settings_dataset,
     )
     simulation_result = SimulationResult(dataset)
     return simulation_result
@@ -345,15 +359,16 @@ def _create_dataset(
     sweeps: SweepsStandardType,
     expand_data,
     dims,
+    resolved_settings_dataset: xr.Dataset,
 ) -> xr.Dataset:
     """
     Creates xarray dataset from simulation results.
 
     Args:
         data_coordinates: dict of data coordinate names and their additional sweeps.
+        resolved_settings_dataset: Dataset containing the resolved relations for sweeps.
     """
     # pylint: disable=too-many-branches,too-many-statements,too-many-locals
-    coords = convert_sweeps_to_standard_form(sweeps)
     # output_array:
     # [prod(Dsweeps), dict['output': dict[Doutput], 'settings_with_relations': 'dict']
 
@@ -365,19 +380,16 @@ def _create_dataset(
 
     dataset: xr.Dataset
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]] = {}
-    extended_coords: dict[str, Any] = copy.copy(coords)
+    extended_coords: dict[str, Any] = {sweep: create_numpy_array_with_fixed_dimensions(sweeps[sweep], tuple([dims[ii]])) for ii, sweep in enumerate(sweeps)}
     # Add settings as variables
     if len(dims):
         _add_settings_as_variables(
             data_vars,
-            settings,
-            extended_coords,
-            reshaped_array_expanded["settings_with_relations"],
-            dims,
+            resolved_settings_dataset,
         )
 
     if not expand_data:
-        coord_names = tuple(coords) + tuple(
+        coord_names = tuple(sweeps) + tuple(
             f"index_{ii}"
             for ii in range(len(reshaped_array_expanded["output"].shape) - len(dims))
         )
@@ -390,7 +402,7 @@ def _create_dataset(
                 reshaped_array_expanded["output"]
             )
             for key, value in output_array_expanded.items():
-                data_vars[key] = (tuple(coords), value, {})
+                data_vars[key] = (tuple(sweeps), value, {})
         elif isinstance(first_element, (collections.abc.Sequence, np.ndarray)) and (
             not isinstance(first_element, str)
         ):
@@ -400,14 +412,14 @@ def _create_dataset(
             extended_coords["index"] = np.arange(
                 output_array_expanded.size // np.prod(dims)
             )
-            coord_names = ("index",) + tuple(coords)
+            coord_names = ("index",) + tuple(sweeps)
             coord_names = coord_names + tuple(
                 f"dummy_{ii}"
                 for ii in range(len(output_array_expanded.shape) - len(coord_names))
             )
             data_vars["data"] = (coord_names, output_array_expanded, {})
         else:
-            data_vars["data"] = (tuple(coords), reshaped_array_expanded["output"], {})
+            data_vars["data"] = (tuple(sweeps), reshaped_array_expanded["output"], {})
 
     if len(dims) == 0:
         # A special check to convert arrays to zero dimensional numpy arrays to protect
@@ -415,16 +427,14 @@ def _create_dataset(
         for data_var, entry in data_vars.items():
             data_vars[data_var] = (
                 entry[0],
-                _create_numpy_array_with_fixed_dimensions(entry[1], dims),
+                create_numpy_array_with_fixed_dimensions(entry[1], dims),
                 entry[2],
             )
     _add_dimensions_to_data_var(
         data_vars,
         settings,
         extended_coords,
-        setting_values=_expand_dict_from_data(
-            reshaped_array_expanded["settings_with_relations"]
-        ),
+        setting_values=resolved_settings_dataset,
         dims=dims,
     )
     for data_var, entry in data_vars.items():
@@ -441,8 +451,8 @@ def _create_dataset(
                 "units": settings[coord_name].unit if coord_name in settings else ""
             },
         )
-    settings_resolved = settings.copy()
-    settings_resolved.resolve_relations()
+    #settings_resolved = settings.copy()
+    #settings_resolved.resolve_relations()
 
     # Remove sweeps from datavars.
     for sweep in sweeps:
@@ -464,62 +474,35 @@ def _create_dataset(
         dataset = xr.Dataset(
             data_vars=data_vars_converted,
             coords=extended_coords,
-            attrs={"settings": settings_resolved},
+            attrs={"settings": settings},
         )
     except:  # pylint: disable=bare-except
         dataset = xr.Dataset(
             data_vars=data_vars,
             coords=extended_coords,
-            attrs={"settings": settings_resolved},
+            attrs={"settings": settings},
         )
     dataset = dataset.pint.quantify()
-
     return dataset
 
 
 def _add_settings_as_variables(
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
-    settings: Settings,
-    sweeps: SweepsStandardType,
-    setting_values,
-    dims,
+    setting_values: xr.Dataset,
 ):
     """
     Adds settings with resolved relations as data variables.
 
     Additionally, adds dimensions of all the settings as coordinates.
     """
-    hierarchy = settings.get_relation_hierarchy()
-
-    # Map from setting names to setting names that define their dimensionality.
-    setting_dimension_map: dict[str, set[str]] = {}
-    for setting_name in sweeps:
-        setting = settings[setting_name]
-        dependent_names = settings.get_dependent_setting_names(setting, hierarchy)
-        for dependent_name in dependent_names:
-            if dependent_name not in setting_dimension_map:
-                setting_dimension_map[dependent_name] = set()
-            setting_dimension_map[dependent_name].add(setting_name)
-    setting_values = _expand_dict_from_data(setting_values)
-    for dependent_name, sweep_names in setting_dimension_map.items():
-        new_slice: list[int | slice] = [0] * len(dims)
-        name_indices = []
-        for sweep_name in sweep_names:
-            name_index = list(sweeps.keys()).index(sweep_name)
-            name_indices.append(name_index)
-            new_slice[name_index] = slice(None)
-        sweep_names_in_order = [
-            list(sweeps.keys())[index] for index in sorted(name_indices)
-        ]
-        sliced_values = setting_values[dependent_name][tuple(new_slice)]
-        data_vars[dependent_name] = (tuple(sweep_names_in_order), sliced_values, {})
-
+    for setting_name in setting_values:
+        data_vars[setting_name] = (setting_values[setting_name].dims, setting_values[setting_name].values, {})
 
 def _add_dimensions_to_data_var(
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
     settings: Settings,
     sweeps: SweepsStandardType,
-    setting_values: dict[str, Any],
+    setting_values: xr.Dataset,        
     dims,
 ):
     """
@@ -551,7 +534,7 @@ def _add_dimensions_to_data_var(
                 data_vars[setting.name] = (
                     setting.dimensions,
                     vstack_and_reshape(
-                        setting_values[setting.name][slice_for_setting_values]
+                        setting_values[setting.name].values
                     )
                     if setting.name in setting_values
                     else setting.value,
@@ -565,30 +548,11 @@ def _add_dimensions_to_data_var(
                 )
 
 
-def _create_numpy_array_with_fixed_dimensions(data: Any, dims: tuple[int]) -> Any:
-    """
-    Creates a numpy array from data with dimensions given by dims.
-
-    If directly converting the array to numpy array would result in an array of different
-    shape, an object array is created instead.
-    """
-    data_array = np.array(data)
-    if data_array.shape != dims:
-        data_array = np.zeros(dims, dtype=object)
-        if dims:
-            for ii in range(np.prod(dims)):
-                indices = np.unravel_index(ii, dims)
-                data_array.flat[ii] = data[indices]
-        else:
-            data_array[()] = data
-    return data_array
-
-
 def _make_list_unique(seq):
     """
     Makes the list unique and ordered.
 
-    From https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order
+    From https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order.
     """
     seen = set()
     seen_add = seen.add

@@ -5,8 +5,17 @@ import logging
 from typing import Any, Sequence
 
 import numpy as np
+from pandas._libs.tslibs import conversion
 
-from pyqsl.settings import Setting
+from pyqsl.settings import Setting, Settings
+import xarray as xr
+import networkx as nx
+
+from functools import partial
+import copy
+import multiprocessing as mp
+import psutil
+import tqdm
 
 SweepsType = dict[str | Setting, Sequence]
 TaskOutputType = dict[str, Any] | tuple | list | Any
@@ -103,3 +112,107 @@ def vstack_and_reshape(array: np.ndarray) -> np.ndarray:
     dims_second_layer = np.array(array.flat[0]).shape
     stacked = np.vstack(array.flatten())  # type: ignore[call-overload]
     return np.reshape(stacked, dims_first_layer + dims_second_layer)
+
+
+def resolve_relations_with_sweeps(settings: Settings, sweeps: SweepsStandardType, n_cores=None, parallelize=True)-> xr.Dataset:
+    """
+    Resolves relations when some of them are swept.
+
+    Attempts to resolve relations so that minimum number of evaluations are done. Instead of
+    evaluating all the relations for each point in the sweep space, relations are only evaluated
+    when their dependant parameters are swept.
+
+    Args:
+        settings: Settings object with all the relations resolved.
+        sweeps: Sweeps for which the settings are re-evalauted.
+
+    Returns:
+        Dataset which datavars are the setting names, coordinates are the sweeps
+        and values are the evaluated setting values.
+    """
+    dataset = xr.Dataset(coords={sweep_name: create_numpy_array_with_fixed_dimensions(sweep_value, [len(sweep_value)]) for sweep_name, sweep_value in sweeps.items()})
+    relation_graph = settings.get_relation_hierarchy()
+    nodes = list(nx.topological_sort(relation_graph))
+    if n_cores is not None:
+        if n_cores < 0:
+            max_nbr_cores = len(psutil.Process().cpu_affinity())
+            n_cores = np.max([max_nbr_cores + n_cores, 1])
+    with mp.Pool(processes=n_cores) as p:
+        for node in (pbar := tqdm.tqdm(nodes, total=len(nodes), leave=False)):
+            setting = settings[node]
+            pbar.set_description(f'Resolving relations for {setting.name}')
+            sweeps_for_node = []
+            needed_settings_for_node = settings.get_needed_settings(setting, relation_graph)
+            for sweep in sweeps:
+                if sweep in needed_settings_for_node:
+                    logger.debug(f"Adding sweep {sweep} for node {node}.")
+                    sweeps_for_node.append(sweep)
+            if not sweeps_for_node:
+                continue
+            dims = [len(sweeps[sweep]) for sweep in sweeps_for_node]
+            n_tot = int(np.prod(dims))
+            if setting.has_active_relation():
+                task = partial(_resolve_in_loop, relation=setting.relation, settings=settings, needed_setting_names=needed_settings_for_node, setting_value_dataset=dataset, dims=dims, sweeps=sweeps)
+                value_array = np.reshape(create_numpy_array_with_fixed_dimensions(np.array(list(map(task, range(n_tot))), dtype=object), tuple(dims)), dims)
+                logger.debug(f"{setting.name} - {value_array.shape} - {tuple(sweeps_for_node)}")
+                dataset[setting.name] = (tuple(sweeps_for_node), value_array)
+    return dataset
+
+def _resolve_in_loop(ii, relation, settings, needed_setting_names, setting_value_dataset, dims, sweeps):
+    """
+    Args:
+        ii: Index of the current sweep for dimensions of the sweeps needed by the target relation.
+        relation: Relation to evaluate.
+        settings: A settings object which relations have been evaluated.
+        needed_setting_names: A list of setting names that are needed for evaluating the given relation.
+        setting_value_dataset: Dataset that contains all the values for already evalauted settings.
+        dims: Dimensions for sweeps for the given relation.
+        sweeps: All sweeps.
+        all_dims: Dimensions of all sweeps.
+    Returns:
+        A new dataset which contains the previously evalauted Setting values
+    """
+    relation = copy.copy(relation)
+    settings = settings.copy()
+    current_ind = np.unravel_index(ii, dims)
+    current_sweeps = [setting_name for setting_name in needed_setting_names if setting_name in sweeps]
+    for setting_name in needed_setting_names:
+        if setting_name in sweeps:
+            # Get the setting value from the sweep
+            sweep_ind = int(current_ind[current_sweeps.index(setting_name)])
+            logger.debug(f"{sweep_ind}, {current_ind}, {setting_name}, {dims}, {ii}")
+            setattr(settings, setting_name, sweeps[setting_name][sweep_ind])
+        if setting_name in setting_value_dataset:
+            # Get the setting value from previously evaluated setting
+            list_descriptor = tuple([current_ind[ii] for ii, sweep_name in enumerate(current_sweeps) if sweep_name in setting_value_dataset[setting_name].dims])
+            setting_value = setting_value_dataset[setting_name].values[list_descriptor]
+            setattr(settings, setting_name, setting_value)
+        
+    relation.resolve(settings)
+    return relation.evaluated_value
+
+
+def create_numpy_array_with_fixed_dimensions(data: Any, dims: tuple[int, ...]) -> Any:
+    """
+    Creates a numpy array from data with dimensions given by dims.
+
+    If directly converting the array to numpy array would result in an array of different
+    shape, an object array is created instead.
+    """
+    conversion_passed = True
+    try:
+        data_array = np.array(data)
+        if data_array.shape != dims:
+            conversion_passed = False
+    except ValueError:
+        # Conversion not possible
+        data_array = np.array(data, dtype=object)
+        conversion_passed = False
+    if not conversion_passed:
+        data_array = np.zeros(dims, dtype=object)
+        if dims:
+            for ii in range(np.prod(dims)):
+                data_array.flat[ii] = data[ii]#[index]
+        else:
+            data_array[()] = data
+    return data_array

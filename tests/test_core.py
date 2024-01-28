@@ -388,6 +388,17 @@ def test_sweeping_setting_with_dimension():
     assert result.c.shape == (2, 3)
 
 
+def test_sweeping_with_mixed_type():
+    def func(a):
+        return a
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = pyqsl.Setting(relation=pyqsl.Function(function=func))
+    result = pyqsl.run(None, settings, sweeps = {'a': [[0, 1], {0, 2}]})
+    assert result.b[0] == [0, 1]
+    assert result.b[1] == {0, 2}
+    assert result.dataset.b.dims == ('a', )
+
 def test_list_of_tasks_mode():
     def task_c(a):
         return {'c': a}
