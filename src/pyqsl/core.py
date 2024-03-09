@@ -24,11 +24,11 @@ from pyqsl.common import (
     SweepsStandardType,
     SweepsType,
     TaskOutputType,
+    calculate_chunksize,
     convert_sweeps_to_standard_form,
-    vstack_and_reshape,
     create_numpy_array_with_fixed_dimensions,
     resolve_relations_with_sweeps,
-    calculate_chunksize,
+    vstack_and_reshape,
 )
 from pyqsl.settings import Settings
 from pyqsl.simulation_result import SimulationResult
@@ -364,7 +364,7 @@ def run(
                 ),
                 total=N_tot,
                 leave=True,
-                desc='Resolving tasks',
+                desc="Resolving tasks",
             )
         )
 
