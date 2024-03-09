@@ -2,25 +2,24 @@
 Definitions used by more than one other module.
 """
 from __future__ import annotations
-
-import copy
 import logging
-import multiprocessing as mp
 import types
-from functools import partial
-from typing import TYPE_CHECKING, Any, Sequence
-
-import networkx as nx
-import numpy as np
+from typing import Any, Sequence, TYPE_CHECKING
 import numpy.typing as npt
-import psutil
-import tqdm.auto as tqdm
-import xarray as xr
+import numpy as np
 from pandas._libs.tslibs import conversion
 
-from pyqsl.many_to_many_relation import EvaluatedManyToManyRelation, ManyToManyRelation
 from pyqsl.settings import Setting, Settings
-from multiprocessing.managers import BaseManager
+from pyqsl.many_to_many_relation import ManyToManyRelation, EvaluatedManyToManyRelation
+
+import xarray as xr
+import networkx as nx
+
+from functools import partial
+import copy
+import multiprocessing as mp
+import psutil
+import tqdm.auto as tqdm
 
 SweepsType = dict[str | Setting, Sequence]
 TaskOutputType = dict[str, Any] | tuple | list | Any
@@ -122,7 +121,7 @@ def vstack_and_reshape(array: np.ndarray) -> np.ndarray:
 
 
 def resolve_relations_with_sweeps(
-    settings: Settings, sweeps: SweepsStandardType, n_cores, pool, parallelize=True
+        settings: Settings, sweeps: SweepsStandardType, n_cores, pool, parallelize=True
 ) -> xr.Dataset:
     """
     Resolves relations when some of them are swept.
@@ -150,21 +149,19 @@ def resolve_relations_with_sweeps(
             for sweep_name, sweep_value in sweeps.items()
         }
     )
-    BaseManager.register('DataSetWrapper', DataSetWrapper)
-    manager = BaseManager()
-    manager.start()
-    dataset_wrapper = manager.DataSetWrapper(dataset)
     settings = settings.copy()
     relation_graph = settings.get_relation_hierarchy()
     many_to_many_relation_map = settings.get_many_to_many_relation_map()
-
+    
     evaluated_many_to_many_relations = set()
     nodes = list(nx.topological_sort(relation_graph))
     for node in (pbar := tqdm.tqdm(nodes, total=len(nodes))):
         setting = settings[node]
         pbar.set_description(f"Resolving relations for {setting.name}")
         sweeps_for_node = []
-        needed_settings_for_node = settings.get_needed_settings(setting, relation_graph)
+        needed_settings_for_node = settings.get_needed_settings(
+            setting, relation_graph
+        )
         for sweep in sweeps:
             if sweep in needed_settings_for_node:
                 sweeps_for_node.append(sweep)
@@ -190,11 +187,12 @@ def resolve_relations_with_sweeps(
                 n_tot,
                 sweeps,
                 mapped_setting_names,
-                dataset_wrapper,
+                dataset,
                 pool,
                 execution_settings=execution_settings,
             )
         elif setting.name in many_to_many_relation_map:
+
             # In many-to-many relations, figure out why mapped_setting
             # names is not enough to set.
 
@@ -249,7 +247,7 @@ def _evaluate_many_to_many_relation_with_sweeps(
         sweeps=sweeps,
     )
     result = list(
-        pool.map(task, range(n_tot)),
+            pool.map(task, range(n_tot)),
     )
     for (
         output_setting_name,
@@ -268,7 +266,7 @@ def _evaluate_many_to_many_relation_with_sweeps(
 
 
 def _resolve_many_to_many_relation_in_loop(
-    ii, relation, settings, needed_setting_names, setting_value_dataset, dims, sweeps
+        ii, relation, settings, needed_setting_names, setting_value_dataset, dims, sweeps
 ):
     """
     Args:
@@ -285,7 +283,7 @@ def _resolve_many_to_many_relation_in_loop(
         A new dataset which contains the previously evalauted Setting values
     """
     relation = copy.copy(relation)
-    # settings = settings.copy()
+    #settings = settings.copy()
     current_ind = np.unravel_index(ii, dims)
     current_sweeps = [
         setting_name for setting_name in needed_setting_names if setting_name in sweeps
@@ -326,40 +324,67 @@ def _evaluate_relation_with_sweeps(
     """
     Evaluates relations for a given setting and adds the result to the dataset.
     """
-    task = partial(
-        _resolve_in_loop,
-        relation=setting.relation,
-        settings=settings,
+
+    get_settings_task = partial(
+        _get_settings_for_resolve_in_loop,
         needed_setting_names=needed_settings_for_node,
         setting_value_dataset=dataset,
         dims=dims,
         sweeps=sweeps,
         mapped_setting_names=mapped_setting_names,
-    )
+        )
+    needed_settings = list(map(get_settings_task, range(n_tot)))
+    evaluate_relation_in_loop_task = partial(
+        _evaluate_relation_in_loop,
+        relation=setting.relation,
+        settings=settings,
+        )
     value_array = np.reshape(
-        create_numpy_array_with_fixed_dimensions(
-            np.array(
-                list(
-                    pool.map(task, range(n_tot)),
-                ),
-                dtype=object,
+    create_numpy_array_with_fixed_dimensions(
+        np.array(
+            list(
+                    pool.map(evaluate_relation_in_loop_task, needed_settings),
             ),
-            tuple(dims),
+            dtype=object,
         ),
+        tuple(dims),
+    ),
         dims,
     )
     dataset[setting.name] = (tuple(sweeps_for_node), value_array)
 
 
+def _evaluate_relation_in_loop(setting_dict, relation, settings):
+    parameter_dict = {parameter_name: setting_dict[setting_name] if setting_name in setting_dict else settings[setting_name].value for parameter_name, setting_name in relation.parameters.items()}
+    return relation.evaluate(**parameter_dict)
+
+def _get_settings_for_resolve_in_loop(ii, needed_setting_names, setting_value_dataset, dims, sweeps, mapped_setting_names):
+    current_ind = np.unravel_index(ii, dims)
+    current_sweeps = [
+        setting_name for setting_name in needed_setting_names if setting_name in sweeps
+    ]
+    setting_values = {}
+    for setting_name in mapped_setting_names:
+        if setting_name in sweeps:
+            # Get the setting value from the sweep
+            sweep_ind = int(current_ind[current_sweeps.index(setting_name)])
+            setting_values[setting_name] = sweeps[setting_name][sweep_ind]
+        if setting_name in setting_value_dataset:
+            # Get the setting value from previously evaluated setting
+            setting_name_dims = setting_value_dataset[setting_name].dims
+            list_descriptor = tuple(
+                [
+                    current_ind[ii]
+                    for ii, sweep_name in enumerate(current_sweeps)
+                    if sweep_name in setting_name_dims
+                ]
+            )
+            setting_value = setting_value_dataset[setting_name].values[list_descriptor]
+            setting_values[setting_name] = setting_value
+    return setting_values
+    
 def _resolve_in_loop(
-    ii,
-    relation,
-    settings,
-    needed_setting_names,
-    setting_value_dataset,
-    dims,
-    sweeps,
-    mapped_setting_names,
+        ii, relation, settings, needed_setting_names, setting_value_dataset, dims, sweeps, mapped_setting_names,
 ):
     """
     Args:
@@ -375,7 +400,7 @@ def _resolve_in_loop(
         A new dataset which contains the previously evalauted Setting values
     """
     relation = copy.copy(relation)
-    # settings = settings.copy()
+    #settings = settings.copy()
     current_ind = np.unravel_index(ii, dims)
     current_sweeps = [
         setting_name for setting_name in needed_setting_names if setting_name in sweeps
@@ -445,17 +470,3 @@ def calculate_chunksize(n_cores: int, n_points: int) -> int:
     else:
         factor = 10.0
     return max(int(n_points / factor) // n_cores, 1)
-
-
-class DataSetWrapper():
-    """
-    Wrapper around dataset that can be used with multprocessing managers.
-    """
-    def __init__(self, dataset: xr.Dataset):
-        self.dataset=dataset
-
-    def __getitem__(self, key):
-        return self.dataset[key]
-
-    def __setitem__(self, key, value):
-        self.dataset[key] = value
