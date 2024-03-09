@@ -209,6 +209,8 @@ def test_many_to_many_relations():
     settings.c = None
     settings.d = None
     settings.e = pyqsl.Setting(relation="c + d")
+    settings.f = pyqsl.Setting(relation="a + d")
+    settings.g = pyqsl.Setting(relation="a + c")
     settings.add_many_to_many_relation(
         pyqsl.ManyToManyRelation(
             function=function,
@@ -224,9 +226,20 @@ def test_many_to_many_relations():
     assert settings.c == 2
     assert settings.d == 3
     assert settings.e == 5
-    pyqsl.run(None, settings)
-    pyqsl.run(None, settings, sweeps={"a": [0, 1, 2]})
-    pyqsl.run(None, settings, sweeps={"a": [0, 1, 2], "b": [3, 4]})
+    result = pyqsl.run(None, settings)
+    assert result.c == 2
+    assert result.d == 3
+    assert result.e == 5
+    result = pyqsl.run(None, settings, sweeps={"a": [0, 1, 2]})
+    assert (result.c == [0, 1, 2]).all()
+    assert (result.d == [3, 3, 3]).all()
+    assert (result.e == [3, 4, 5]).all()
+    assert (result.f == [3, 4, 5]).all()
+    assert (result.g == [0, 2, 4]).all()
+    result = pyqsl.run(None, settings, sweeps={"a": [0, 1, 2], "b": [3, 4]})
+    assert (result.c == [[0, 0], [1, 1], [2, 2]]).all()
+    assert (result.d == [[3, 4], [3, 4], [3, 4]]).all()
+    assert (result.e == [[3, 4], [4, 5], [5, 6]]).all()
 
 
 def test_many_to_many_relations_with_dict():

@@ -10,11 +10,13 @@ import inspect
 import logging
 import multiprocessing as mp
 from functools import partial
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 import psutil
-import tqdm
+
+# import tqdm
+import tqdm.auto as tqdm
 import xarray as xr
 
 from pyqsl.common import (
@@ -26,6 +28,7 @@ from pyqsl.common import (
     vstack_and_reshape,
     create_numpy_array_with_fixed_dimensions,
     resolve_relations_with_sweeps,
+    calculate_chunksize,
 )
 from pyqsl.settings import Settings
 from pyqsl.simulation_result import SimulationResult
@@ -56,31 +59,42 @@ def _simulation_loop_body(
         post_process_in_loop: Callback to do post-processing after the task is called.
         task: The main task to run.
         resolved_settings_dataset: Dataset containing the setting values for sweeps.
-  
+
     Returns:
         The results in a dictionary.
     """
     # pylint: disable=too-many-branches
-    # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
+
+    # Make sure that parallel threads don't simulteneously edit params.
+    # Only use params_private in the following.
+
     original_settings = settings
     settings = original_settings.copy()
     current_ind = np.unravel_index(ii, dims)
     sweep_array_index = 0
     for sweep_name, value in sweeps.items():
         # Update all the parameters
+
         setattr(settings, sweep_name, value[int(current_ind[sweep_array_index])])
         sweep_array_index = sweep_array_index + 1
     for setting_name in resolved_settings_dataset:
         # Get the setting value from previously evaluated setting
-        list_descriptor = tuple([current_ind[ii] for ii, sweep_name in enumerate(sweeps.keys()) if sweep_name in resolved_settings_dataset[setting_name].dims])
+
+        list_descriptor = tuple(
+            [
+                current_ind[ii]
+                for ii, sweep_name in enumerate(sweeps.keys())
+                if sweep_name in resolved_settings_dataset[setting_name].dims
+            ]
+        )
         setting_value = resolved_settings_dataset[setting_name].values[list_descriptor]
         setattr(settings, setting_name, setting_value)
 
-    #settings_with_relations = settings.resolve_relations()
     if pre_process_in_loop:
         pre_process_in_loop(settings)
 
     # Resolve relations
+
     task = task or (lambda: {})  # pylint: disable=unnecessary-lambda-assignment
     settings_dict = settings.to_dict()
     if not isinstance(task, list):
@@ -95,16 +109,19 @@ def _simulation_loop_body(
         valid_settings = {
             key: settings_dict[key] for key in settings_dict if key not in invalid_args
         }
-        
-        # Call the task function. If "settings" is one of the arguments, substitute that with the settings object.
+
+        # Call the task function. If "settings" is one of the arguments,
+        # substitute that with the settings object.
+
         if _settings_in_args(current_task):
             valid_settings["settings"] = settings
         output = current_task(**valid_settings)
-        
+
         if post_processs_in_loop:
             output = post_processs_in_loop(output, settings)
-            
+
         # If any setting has been changed, add as a result.
+
         if isinstance(output, Settings):
             new_output = {}
             for setting in output:
@@ -121,13 +138,15 @@ def _simulation_loop_body(
                     # Comparison for normal setting values.
                     comparison = setting.value != original_settings[name].value
                     if (
-                            comparison
+                        comparison
                     ):  # This is necessary to catch results that cannot be compared.
                         pass
                 except Exception:  # pylint: disable=broad-exception-caught
                     try:
                         # Comparison for array-like setting values.
-                        comparison = (setting.value != original_settings[name].value).any()
+                        comparison = (
+                            setting.value != original_settings[name].value
+                        ).any()
                     except Exception:  # pylint: disable=broad-exception-caught
                         pass
                     if comparison:
@@ -140,8 +159,7 @@ def _simulation_loop_body(
 
     output_as_dict = {
         "output": final_result,
-        "settings_with_relations": { # TODO: REMOVE THIS
-        },
+        "settings_with_relations": {},  # TODO: REMOVE THIS
     }
     return output_as_dict
 
@@ -154,9 +172,6 @@ def run(
     pre_process_in_loop: Optional[Callable[[Settings], None]] = None,
     post_process_in_loop: Optional[
         Callable[[Settings, TaskOutputType], TaskOutputType]
-    ] = None,
-    post_process_after_loop: Optional[  # pylint: disable=unused-argument
-        Callable[[Settings, SweepsStandardType], DataCoordinatesType]
     ] = None,
     parallelize: bool = False,
     expand_data: bool = True,
@@ -183,8 +198,6 @@ def run(
     over different sweeps, and should take settings object as an input and make necessary modifications.
     ``pre_process_in_loop`` will be applied separatately inside the simulation loop. The final callback,
     ``post_process_in_loop``` will be applied after the simulation is finished, and takes the output of the
-    task and the settings as input. ``post_process_after_loop`` can be used to modify sweeps, for example
-    one can add an extra coordinate that corresponds to an additional dimension the simulation creates.
 
     The results of the simulation are returned in ``SimulationResult`` object. The structure of the object
     depends on the task function's return type and the value of ``expand_data``. If ``expand_data`` is
@@ -215,6 +228,7 @@ def run(
             Function can be used to modify the output of the simulation task.
         parallelize:
             Boolean indicating whether the computation should be parallelized.
+            It is not recommended to parallelize the execution if the task function contains an internal parallelization mechanism. For example, ``numpy.linalg.inv`` is already parallized which results in very inefficient execution if ``parallize`` is set to `True` for tasks requiring matrix inversion.
         expand_data:
             Flag indicating whether the first level of variables should be expanded.
         n_cores:
@@ -292,7 +306,9 @@ def run(
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
         if not isinstance(task, Callable):
-            raise ValueError(f"When using 'jupyter_compatibility_mode' task must be Callable. Got {type(task)}.")
+            raise ValueError(
+                f"When using 'jupyter_compatibility_mode' task must be Callable. Got {type(task)}."
+            )
         with open("./tmp_simulation_task.py", "w", encoding="utf-8") as file:
             file.write(
                 inspect.getsource(task).replace(task.__name__, "simulation_task")
@@ -305,35 +321,52 @@ def run(
         simulation_task = task
 
     settings.resolve_relations()
-    resolved_settings_dataset = resolve_relations_with_sweeps(settings=settings, sweeps=sweeps_std_form)
 
-    simulation_loop_body_partial = partial(
-        _simulation_loop_body,
-        settings=settings,
-        dims=dims,
-        sweeps=sweeps_std_form,
-        pre_process_in_loop=pre_process_in_loop,
-        post_processs_in_loop=post_process_in_loop,
-        task=simulation_task,
-        resolved_settings_dataset=resolved_settings_dataset,
-    )
     if parallelize:
-        if n_cores is not None:
-            if n_cores < 0:
-                max_nbr_cores = len(psutil.Process().cpu_affinity())
-                n_cores = np.max([max_nbr_cores + n_cores, 1])
-        with mp.Pool(processes=n_cores) as p:
-            output_array = list(
-                tqdm.tqdm(
-                    p.imap(simulation_loop_body_partial, range(N_tot)),
-                    total=N_tot,
-                    smoothing=0,
-                )
-            )
+        cores = psutil.Process().cpu_affinity()
+        max_nbr_cores = len(cores) if cores else 1
+        if n_cores is None:
+            used_cores = max_nbr_cores
+        elif n_cores < 0:
+            used_cores = np.max([max_nbr_cores + n_cores, 1])
+        else:
+            used_cores = n_cores
+        pool = mp.Pool(processes=used_cores)
+        execution_settings = {"chunksize": calculate_chunksize(used_cores, N_tot)}
     else:
-        for ii in tqdm.tqdm(range(N_tot)):
-            output = simulation_loop_body_partial(ii)
-            output_array[ii] = output
+        pool = LinearPool()
+        used_cores = 1
+        execution_settings = {}
+
+    with pool:
+        resolved_settings_dataset = resolve_relations_with_sweeps(
+            settings=settings,
+            sweeps=sweeps_std_form,
+            pool=pool,
+            parallelize=parallelize,
+            n_cores=used_cores,
+        )
+
+        simulation_loop_body_partial = partial(
+            _simulation_loop_body,
+            settings=settings,
+            dims=dims,
+            sweeps=sweeps_std_form,
+            pre_process_in_loop=pre_process_in_loop,
+            post_processs_in_loop=post_process_in_loop,
+            task=simulation_task,
+            resolved_settings_dataset=resolved_settings_dataset,
+        )
+        output_array = list(
+            tqdm.tqdm(
+                pool.imap(
+                    simulation_loop_body_partial, range(N_tot), **execution_settings
+                ),
+                total=N_tot,
+                leave=True,
+                desc='Resolving tasks',
+            )
+        )
 
     end_time = datetime.datetime.now()
     logger.info(
@@ -380,7 +413,12 @@ def _create_dataset(
 
     dataset: xr.Dataset
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]] = {}
-    extended_coords: dict[str, Any] = {sweep: create_numpy_array_with_fixed_dimensions(sweeps[sweep], tuple([dims[ii]])) for ii, sweep in enumerate(sweeps)}
+    extended_coords: dict[str, Any] = {
+        sweep: create_numpy_array_with_fixed_dimensions(
+            sweeps[sweep], tuple([dims[ii]])
+        )
+        for ii, sweep in enumerate(sweeps)
+    }
     # Add settings as variables
     if len(dims):
         _add_settings_as_variables(
@@ -451,8 +489,6 @@ def _create_dataset(
                 "units": settings[coord_name].unit if coord_name in settings else ""
             },
         )
-    #settings_resolved = settings.copy()
-    #settings_resolved.resolve_relations()
 
     # Remove sweeps from datavars.
     for sweep in sweeps:
@@ -496,13 +532,18 @@ def _add_settings_as_variables(
     Additionally, adds dimensions of all the settings as coordinates.
     """
     for setting_name in setting_values:
-        data_vars[setting_name] = (setting_values[setting_name].dims, setting_values[setting_name].values, {})
+        data_vars[setting_name] = (
+            setting_values[setting_name].dims,
+            setting_values[setting_name].values,
+            {},
+        )
+
 
 def _add_dimensions_to_data_var(
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
     settings: Settings,
     sweeps: SweepsStandardType,
-    setting_values: xr.Dataset,        
+    setting_values: xr.Dataset,
     dims,
 ):
     """
@@ -533,9 +574,7 @@ def _add_dimensions_to_data_var(
             if setting.name not in data_vars:
                 data_vars[setting.name] = (
                     setting.dimensions,
-                    vstack_and_reshape(
-                        setting_values[setting.name].values
-                    )
+                    vstack_and_reshape(setting_values[setting.name].values)
                     if setting.name in setting_values
                     else setting.value,
                     {},
@@ -626,3 +665,27 @@ def _settings_in_args(func) -> bool:
     """
     args, _, _, _, _, _, _ = inspect.getfullargspec(func)
     return "settings" in args
+
+
+class LinearPool:
+    """
+    Implements a context-manager for executing linear tasks.
+
+    Supports two functions, ``map`` and ``imap`` which both call built-in ``map`` function.
+    """
+
+    def __init__(self):
+        self.map = map
+        self.imap = map
+        self.imap_unordered = map
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, *_):
+        """
+        Returns False if any errors occurred, otherwise True.
+        """
+        if exc_type is not None:
+            return False
+        return True

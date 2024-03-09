@@ -14,10 +14,11 @@ import dataclasses
 import logging
 import types
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 import networkx as nx
 import xarray as xr
+import numpy as np
 
 logger = logging.getLogger(__name__)
 # pyright: reportPropertyTypeMismatch=false
@@ -245,7 +246,6 @@ class Setting:
         """
         if isinstance(value, property):
             return
-            # value = []
 
         new_dimension_list: list[str] = []
         sequence_of_dimensions: Sequence[str | Setting]

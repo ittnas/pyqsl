@@ -413,3 +413,12 @@ def test_list_of_tasks_mode():
     result = pyqsl.run([task_c, task_d], settings)
     assert result.c == settings.a
     assert result.d == settings.b
+
+def test_sweeping_setting_with_relations():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = pyqsl.Setting(relation='a')
+    settings.c = pyqsl.Setting(relation='b')
+    result = pyqsl.run(None, settings=settings, sweeps={'b': [0, 2, 3]})
+    assert list(result.b) == [0, 2, 3]
+    assert list(result.c) == [0, 2, 3]
