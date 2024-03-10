@@ -20,7 +20,6 @@ import tqdm.auto as tqdm
 import xarray as xr
 
 from pyqsl.common import (
-    DataCoordinatesType,
     SweepsStandardType,
     SweepsType,
     TaskOutputType,
@@ -29,6 +28,7 @@ from pyqsl.common import (
     create_numpy_array_with_fixed_dimensions,
     resolve_relations_with_sweeps,
     calculate_chunksize,
+    _get_settings_for_resolve_in_loop,
 )
 from pyqsl.settings import Settings
 from pyqsl.simulation_result import SimulationResult
@@ -37,28 +37,24 @@ logger = logging.getLogger(__name__)
 
 
 def _simulation_loop_body(
-    ii: int,
+    setting_value_dict: dict[str, Any],
     settings: Settings,
-    dims: list[int],
     sweeps: SweepsStandardType,
     pre_process_in_loop: Callable | None,
     post_processs_in_loop: Callable | None,
     task: Callable | None | list[Callable],
-    resolved_settings_dataset: xr.Dataset,
 ) -> dict[str, Any]:
     """
     This function is responsible for all the actions that happen for each point in simulation.
 
     Args:
-        ii: index of the point.
+        setting_value_dict: Dict containing values for resolved settings
         settings:
             Settings for index ``ii`` in the simulation. At this point, the relations have not been resolved, yet.
-        dims: Sweep dimensions.
         sweeps: Sweeps for the simulation.
         pre_process_in_loop: Callback to do processing before the task is called.
         post_process_in_loop: Callback to do post-processing after the task is called.
         task: The main task to run.
-        resolved_settings_dataset: Dataset containing the setting values for sweeps.
 
     Returns:
         The results in a dictionary.
@@ -70,26 +66,10 @@ def _simulation_loop_body(
 
     original_settings = settings
     settings = original_settings.copy()
-    current_ind = np.unravel_index(ii, dims)
-    sweep_array_index = 0
-    for sweep_name, value in sweeps.items():
-
-        # Update all the parameters
-
-        setattr(settings, sweep_name, value[int(current_ind[sweep_array_index])])
-        sweep_array_index = sweep_array_index + 1
-    for setting_name in resolved_settings_dataset:
+    for setting_name, setting_value in setting_value_dict.items():
 
         # Get the setting value from previously evaluated setting
 
-        list_descriptor = tuple(
-            [
-                current_ind[ii]
-                for ii, sweep_name in enumerate(sweeps.keys())
-                if sweep_name in resolved_settings_dataset[setting_name].dims
-            ]
-        )
-        setting_value = resolved_settings_dataset[setting_name].values[list_descriptor]
         setattr(settings, setting_name, setting_value)
 
     if pre_process_in_loop:
@@ -324,8 +304,10 @@ def run(
 
     windows_and_jupyter = jupyter_compatibility_mode
     if parallelize and windows_and_jupyter:
+
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
+
         if not isinstance(task, Callable):
             raise ValueError(
                 f"When using 'jupyter_compatibility_mode' task must be Callable. Got {type(task)}."
@@ -334,7 +316,9 @@ def run(
             file.write(
                 inspect.getsource(task).replace(task.__name__, "simulation_task")
             )
-        # Note, This does not work within pytest
+
+        # Note, this does not work within pytest
+
         from tmp_simulation_task import (  # pylint: disable=import-error,import-outside-toplevel
             simulation_task,
         )
@@ -367,21 +351,31 @@ def run(
             parallelize=parallelize,
             n_cores=used_cores,
         )
-
+        setting_names_for_tasks = list(resolved_settings_dataset.data_vars)
+        for sweep_name in sweeps_std_form:
+            if sweep_name not in setting_names_for_tasks:
+                setting_names_for_tasks.append(sweep_name)
+        get_settings_task = partial(
+            _get_settings_for_resolve_in_loop,
+            needed_setting_names=setting_names_for_tasks,
+            setting_value_dataset=resolved_settings_dataset,
+            dims=dims,
+            sweeps=sweeps_std_form,
+            mapped_setting_names=dict(zip(setting_names_for_tasks, setting_names_for_tasks)),
+        )
+        setting_value_dicts = list(map(get_settings_task, range(N_tot)))
         simulation_loop_body_partial = partial(
             _simulation_loop_body,
             settings=settings,
-            dims=dims,
             sweeps=sweeps_std_form,
             pre_process_in_loop=pre_process_in_loop,
             post_processs_in_loop=post_process_in_loop,
             task=simulation_task,
-            resolved_settings_dataset=resolved_settings_dataset,
         )
         output_array = list(
             tqdm.tqdm(
                 pool.imap(
-                    simulation_loop_body_partial, range(N_tot), **execution_settings
+                    simulation_loop_body_partial, setting_value_dicts, **execution_settings
                 ),
                 total=N_tot,
                 leave=True,
@@ -580,8 +574,6 @@ def _add_dimensions_to_data_var(
     """
     Adds settings with dimensions as data vars. Also adds dimensions to data_vars with names that align with settings.
     """
-    # Add setting dimensions
-    slice_for_setting_values = tuple([0] * len(dims))
     for setting in settings:
         if setting.dimensions:
             for dimension in setting.dimensions:
@@ -702,7 +694,8 @@ class LinearPool:
     """
     Implements a context-manager for executing linear tasks.
 
-    Supports two functions, ``map`` and ``imap`` which both call built-in ``map`` function.
+    Supports three functions, ``map``, and ``imap``, and ``imap_unordered`` which
+    all call the built-in ``map`` function.
     """
 
     def __init__(self):

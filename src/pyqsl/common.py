@@ -149,7 +149,6 @@ def resolve_relations_with_sweeps(
             for sweep_name, sweep_value in sweeps.items()
         }
     )
-    settings = settings.copy()
     relation_graph = settings.get_relation_hierarchy()
     many_to_many_relation_map = settings.get_many_to_many_relation_map()
     
@@ -191,10 +190,6 @@ def resolve_relations_with_sweeps(
                 execution_settings=execution_settings,
             )
         elif setting.name in many_to_many_relation_map:
-
-            # In many-to-many relations, figure out why mapped_setting
-            # names is not enough to set.
-
             _evaluate_many_to_many_relation_with_sweeps(
                 setting,
                 settings,
