@@ -73,11 +73,13 @@ def _simulation_loop_body(
     current_ind = np.unravel_index(ii, dims)
     sweep_array_index = 0
     for sweep_name, value in sweeps.items():
+
         # Update all the parameters
 
         setattr(settings, sweep_name, value[int(current_ind[sweep_array_index])])
         sweep_array_index = sweep_array_index + 1
     for setting_name in resolved_settings_dataset:
+
         # Get the setting value from previously evaluated setting
 
         list_descriptor = tuple(
@@ -135,7 +137,9 @@ def _simulation_loop_body(
                     continue
                 comparison = False
                 try:
+
                     # Comparison for normal setting values.
+
                     comparison = setting.value != original_settings[name].value
                     if (
                         comparison
