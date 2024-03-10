@@ -323,6 +323,11 @@ def _evaluate_relation_with_sweeps(
 ):
     """
     Evaluates relations for a given setting and adds the result to the dataset.
+
+    The evaluation is done in two steps. First, all the setting values needed for
+    evaluating the relation are fetched from the `setting_value_dataset` sequentially.
+    The fetched setting values are then used to evaluate the relations using the pool,
+    which can be either parallel or sequential.
     """
 
     get_settings_task = partial(
@@ -358,7 +363,25 @@ def _evaluate_relation_in_loop(setting_dict, relation, settings):
     parameter_dict = {parameter_name: setting_dict[setting_name] if setting_name in setting_dict else settings[setting_name].value for parameter_name, setting_name in relation.parameters.items()}
     return relation.evaluate(**parameter_dict)
 
-def _get_settings_for_resolve_in_loop(ii, needed_setting_names, setting_value_dataset, dims, sweeps, mapped_setting_names):
+
+def _get_settings_for_resolve_in_loop(ii: int, needed_setting_names: list[str], setting_value_dataset: xr.Dataset, dims: list[int], sweeps: SweepsStandardType, mapped_setting_names: dict[str, str])->dict[str, Any]:
+    """
+    Creates a dictionary of that maps the setting names to setting values for `needed_setting_names`.
+
+    The setting values are fetched from the `setting_value_dataset`. The index `ii` and the sweep
+    dimensions are used to find out which value to fetch from the dataset.
+
+    Args:
+        ii: Index of the current sweep for dimensions of the sweeps needed by the target relation.
+        needed_setting_names: A list of setting names that are needed for evaluating the given relation.
+        setting_value_dataset: Dataset that contains all the values for already evalauted settings.
+        dims: Dimensions for sweeps for the given relation.
+        sweeps: All the sweeps.
+        mapped_setting_names: Mapped setting names for the given relation.
+    Returns:
+        A new dataset which contains the previously evaluated Setting values.
+
+    """
     current_ind = np.unravel_index(ii, dims)
     current_sweeps = [
         setting_name for setting_name in needed_setting_names if setting_name in sweeps
@@ -382,49 +405,6 @@ def _get_settings_for_resolve_in_loop(ii, needed_setting_names, setting_value_da
             setting_value = setting_value_dataset[setting_name].values[list_descriptor]
             setting_values[setting_name] = setting_value
     return setting_values
-    
-def _resolve_in_loop(
-        ii, relation, settings, needed_setting_names, setting_value_dataset, dims, sweeps, mapped_setting_names,
-):
-    """
-    Args:
-        ii: Index of the current sweep for dimensions of the sweeps needed by the target relation.
-        relation: Relation to evaluate.
-        settings: A settings object which relations have been evaluated.
-        needed_setting_names: A list of setting names that are needed for evaluating the given relation.
-        setting_value_dataset: Dataset that contains all the values for already evalauted settings.
-        dims: Dimensions for sweeps for the given relation.
-        sweeps: All sweeps.
-        mapped_setting_names: Mapped setting names for the given relation.
-    Returns:
-        A new dataset which contains the previously evalauted Setting values
-    """
-    relation = copy.copy(relation)
-    #settings = settings.copy()
-    current_ind = np.unravel_index(ii, dims)
-    current_sweeps = [
-        setting_name for setting_name in needed_setting_names if setting_name in sweeps
-    ]
-    for setting_name in mapped_setting_names:
-        if setting_name in sweeps:
-            # Get the setting value from the sweep
-            sweep_ind = int(current_ind[current_sweeps.index(setting_name)])
-            setattr(settings, setting_name, sweeps[setting_name][sweep_ind])
-        if setting_name in setting_value_dataset:
-            # Get the setting value from previously evaluated setting
-            setting_name_dims = setting_value_dataset[setting_name].dims
-            list_descriptor = tuple(
-                [
-                    current_ind[ii]
-                    for ii, sweep_name in enumerate(current_sweeps)
-                    if sweep_name in setting_name_dims
-                ]
-            )
-            setting_value = setting_value_dataset[setting_name].values[list_descriptor]
-            setattr(settings, setting_name, setting_value)
-
-    relation.resolve(settings)
-    return relation.evaluated_value
 
 
 def create_numpy_array_with_fixed_dimensions(data: Any, dims: tuple[int, ...]) -> Any:

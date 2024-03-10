@@ -176,7 +176,7 @@ def run(
     parallelize: bool = False,
     expand_data: bool = True,
     n_cores: Optional[int] = None,
-    jupyter_compability_mode: bool = False,
+    jupyter_compatibility_mode: bool = False,
 ) -> SimulationResult:
     """
     Runs the simulation for a given task.
@@ -198,6 +198,8 @@ def run(
     over different sweeps, and should take settings object as an input and make necessary modifications.
     ``pre_process_in_loop`` will be applied separatately inside the simulation loop. The final callback,
     ``post_process_in_loop``` will be applied after the simulation is finished, and takes the output of the
+    task and the settings as input. ``post_process_after_loop`` can be used to modify sweeps, for example
+    one can add an extra coordinate that corresponds to an additional dimension the simulation creates.
 
     The results of the simulation are returned in ``SimulationResult`` object. The structure of the object
     depends on the task function's return type and the value of ``expand_data``. If ``expand_data`` is
@@ -209,6 +211,22 @@ def run(
     * If task returns a list or tuple, the data can can be accessed as ``result.data[i]``, where ``i`` refer
       to indices in the list or tuple.
     * If task returns a single number, the data can be accessed as ``result.data``.
+
+    The execution of the task and the evaluation of the relations can be parallelized using multi-processing
+    by providing the argument ``parallelize=True``. While the parallelization works well in most cases, there
+    are situations when the parallelization overhead is higher than the benefit.
+
+    * It is not recommended to parallelize the execution if the task function contains an internal
+      parallelization mechanism. For example, ``numpy.linalg.inv`` is already parallized which results in very
+      inefficient execution if ``parallize`` is set to `True` for tasks requiring matrix inversion.
+    * When processing large datasets, copying the data between the processes might result in a large overhead.
+      Operating systems supporting ``fork()`` in principle do not create a copy of read-only data, but in
+      python just accessing an object increments it's reference count, triggering the copy logic.
+    * For parallelization, pyqsl uses ``multiprocessing`` library, which is not fully supported with
+      interactive interpreters such as jupyter notebook. The execution might hang unexpectedly.
+    * Multiprocessing with interactive interpreter and Windows OS is problematic and likely results in a crash.
+      In order to avoid one of the known problems, write your task function in a separate python file instead
+      of e.g a cell of a jupyter notebook. You can also try setting ``jupyter_compatibility_mode=True``.
 
     Args:
         task:
@@ -228,13 +246,12 @@ def run(
             Function can be used to modify the output of the simulation task.
         parallelize:
             Boolean indicating whether the computation should be parallelized.
-            It is not recommended to parallelize the execution if the task function contains an internal parallelization mechanism. For example, ``numpy.linalg.inv`` is already parallized which results in very inefficient execution if ``parallize`` is set to `True` for tasks requiring matrix inversion.
         expand_data:
             Flag indicating whether the first level of variables should be expanded.
         n_cores:
             Number of cores to use in parallel processing. If None, all the available cores are used (``N_max``).
             For negative numbers, ``N_max + n_cores`` is used.
-        jupyter_compability_mode:
+        jupyter_compatibility_mode:
             If running in jupyter on windows, this needs to be set to True. This is due to a weird behaviour in
             multiprocessing, which requires the task to be saved to a file. When using this mode, the task
             function needs to be written in a very specific way. For example, all the imports needed
@@ -301,7 +318,7 @@ def run(
     if pre_process_before_loop:
         pre_process_before_loop(settings)
 
-    windows_and_jupyter = jupyter_compability_mode
+    windows_and_jupyter = jupyter_compatibility_mode
     if parallelize and windows_and_jupyter:
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
@@ -402,11 +419,12 @@ def _create_dataset(
         resolved_settings_dataset: Dataset containing the resolved relations for sweeps.
     """
     # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+
     # output_array:
     # [prod(Dsweeps), dict['output': dict[Doutput], 'settings_with_relations': 'dict']
-
     # reshaped_array:
     # [Dsweeps, dict['output': dict[Doutput], 'settings_with_relations': 'dict']
+
     reshaped_array = np.reshape(np.array(output_array, dtype=object), dims)
     # Expand
     reshaped_array_expanded = _expand_dict_from_data(reshaped_array)
@@ -419,7 +437,9 @@ def _create_dataset(
         )
         for ii, sweep in enumerate(sweeps)
     }
+
     # Add settings as variables
+
     if len(dims):
         _add_settings_as_variables(
             data_vars,
@@ -433,7 +453,9 @@ def _create_dataset(
         )
         data_vars["data"] = (coord_names, reshaped_array_expanded["output"], {})
     else:
+
         # Check type from first element
+
         first_element = reshaped_array.flat[0]["output"]
         if isinstance(first_element, collections.abc.Mapping):
             output_array_expanded = _expand_dict_from_data(
@@ -460,8 +482,10 @@ def _create_dataset(
             data_vars["data"] = (tuple(sweeps), reshaped_array_expanded["output"], {})
 
     if len(dims) == 0:
+
         # A special check to convert arrays to zero dimensional numpy arrays to protect
         # the underlying data structure.
+
         for data_var, entry in data_vars.items():
             data_vars[data_var] = (
                 entry[0],
@@ -491,11 +515,14 @@ def _create_dataset(
         )
 
     # Remove sweeps from datavars.
+
     for sweep in sweeps:
         if sweep in data_vars:
             del data_vars[sweep]
+
     # Try convert data that has numpy object type to any natural datatype.
     # If conversion cannot be done, retain in original form.
+
     try:
         data_vars_converted = {}
         for data_var, entry in data_vars.items():
