@@ -1,6 +1,7 @@
 from typing import Any
 
 import numpy as np
+from pluggy import _result
 import pytest
 
 import pyqsl
@@ -358,3 +359,85 @@ def test_that_setting_shape_is_correct():
     result = pyqsl.run(None, settings, sweeps=dict(a=np.linspace(0, 1, 3), b=[0, 2]))
     assert result.c.shape == (3, 2)
     result.dataset.c.plot()
+
+
+def test_that_setting_shape_is_correct_for_complicated_shape():
+    def task(settings):
+        return {"g": settings.b.value}
+
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = 3
+    settings.c = pyqsl.Setting(relation="a + b")
+    settings.d = pyqsl.Setting(relation="a + b + c")
+    settings.e = 3
+    settings.f = pyqsl.Setting(relation="e + b")
+    result = pyqsl.run(task, settings, sweeps=dict(a=np.linspace(0, 1, 3), b=[0, 2]))
+    assert result.d.shape == (3, 2)
+    result.dataset.d.plot()
+    assert result.f.shape == (2,)
+    result.dataset.f.plot()
+    assert result.dataset.d.shape == (3, 2)
+
+
+def test_sweeping_setting_with_dimension():
+    settings = pyqsl.Settings()
+    settings.a = [0, 1, 2]
+    settings.b = pyqsl.Setting(dimensions=["a"], value=[0, 1, 2])
+    settings.c = pyqsl.Setting(dimensions=["a"], relation="b")
+    result = pyqsl.run(
+        None, settings=settings, sweeps={"b": [[0, 1, 2], [0.5, 1.5, 2.5]]}
+    )
+    assert result.c.shape == (2, 3)
+
+
+def test_sweeping_with_mixed_type():
+    def func(a):
+        return a
+
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = pyqsl.Setting(relation=pyqsl.Function(function=func))
+    result = pyqsl.run(None, settings, sweeps={"a": [[0, 1], {0, 2}]})
+    assert result.b[0] == [0, 1]
+    assert result.b[1] == {0, 2}
+    assert result.dataset.b.dims == ("a",)
+
+
+def test_list_of_tasks_mode():
+    def task_c(a):
+        return {"c": a}
+
+    def task_d(b):
+        return {"d": b}
+
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = 3
+    result = pyqsl.run(task_c, settings)
+    assert result.c == settings.a
+    result = pyqsl.run(None, settings)
+    result = pyqsl.run([task_c, task_d], settings)
+    assert result.c == settings.a
+    assert result.d == settings.b
+
+
+def test_sweeping_setting_with_relations():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = pyqsl.Setting(relation="a")
+    settings.c = pyqsl.Setting(relation="b")
+    result = pyqsl.run(None, settings=settings, sweeps={"b": [0, 2, 3]})
+    assert list(result.b) == [0, 2, 3]
+    assert list(result.c) == [0, 2, 3]
+
+
+def test_sweeping_different_order():
+    settings = pyqsl.Settings()
+    settings.a = 1
+    settings.b = 2
+    settings.c = pyqsl.Setting(relation="a + b")
+    result = pyqsl.run(None, settings=settings, sweeps={"b": [0, 1, 2], "a": [0.5, 1.0]})
+    assert result.c.shape == (3, 2)
+    result = pyqsl.run(None, settings=settings, sweeps={"a": [0.5, 1.0], "b": [0, 1, 2]})
+    assert result.c.shape == (2, 3)

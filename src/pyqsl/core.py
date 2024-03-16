@@ -14,15 +14,18 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 import psutil
-import tqdm
+import tqdm.auto as tqdm
 import xarray as xr
 
 from pyqsl.common import (
-    DataCoordinatesType,
     SweepsStandardType,
     SweepsType,
     TaskOutputType,
+    _get_settings_for_resolve_in_loop,
+    calculate_chunksize,
     convert_sweeps_to_standard_form,
+    create_numpy_array_with_fixed_dimensions,
+    resolve_relations_with_sweeps,
     vstack_and_reshape,
 )
 from pyqsl.settings import Settings
@@ -32,102 +35,117 @@ logger = logging.getLogger(__name__)
 
 
 def _simulation_loop_body(
-    ii: int,
+    setting_value_dict: dict[str, Any],
     settings: Settings,
-    dims: tuple[int, ...],
     sweeps: SweepsStandardType,
     pre_process_in_loop: Callable | None,
     post_processs_in_loop: Callable | None,
-    task: Callable | None,
+    task: Callable | None | list[Callable],
 ) -> dict[str, Any]:
     """
     This function is responsible for all the actions that happen for each point in simulation.
 
     Args:
-        ii: index of the point.
+        setting_value_dict: Dict containing values for resolved settings
         settings:
             Settings for index ``ii`` in the simulation. At this point, the relations have not been resolved, yet.
-        dims: Sweep dimensions.
         sweeps: Sweeps for the simulation.
         pre_process_in_loop: Callback to do processing before the task is called.
         post_process_in_loop: Callback to do post-processing after the task is called.
         task: The main task to run.
+
     Returns:
         The results in a dictionary.
     """
     # pylint: disable=too-many-branches
-    # Make sure that parallel threads don't simulataneously edit params. Only use params_private in the following
+
+    # Make sure that parallel threads don't simulteneously edit params.
+    # Only use params_private in the following.
+
     original_settings = settings
-    settings = copy.deepcopy(original_settings)
-    current_ind = np.unravel_index(ii, dims)
-    sweep_array_index = 0
-    for sweep_name, value in sweeps.items():
-        # Update all the parameters
-        setattr(settings, sweep_name, value[int(current_ind[sweep_array_index])])
-        sweep_array_index = sweep_array_index + 1
+    settings = original_settings.copy()
+    for setting_name, setting_value in setting_value_dict.items():
+        # Get the setting value from previously evaluated setting
+
+        setattr(settings, setting_name, setting_value)
 
     if pre_process_in_loop:
         pre_process_in_loop(settings)
 
     # Resolve relations
+
     task = task or (lambda: {})  # pylint: disable=unnecessary-lambda-assignment
-    settings_with_relations = settings.resolve_relations()
     settings_dict = settings.to_dict()
-    invalid_args = _get_invalid_args(task, settings_dict)
-    logger.debug("Removing invalid args (%s) from function.", str(invalid_args))
-    valid_settings = {
-        key: settings_dict[key] for key in settings_dict if key not in invalid_args
-    }
+    if not isinstance(task, list):
+        task_list = [task]
+    else:
+        task_list = task
 
-    # Call the task function. If "settings" is one of the arguments, substitute that with the settings object.
-    if _settings_in_args(task):
-        valid_settings["settings"] = settings
-    output = task(**valid_settings)
+    final_result = {}
+    for current_task in task_list:
+        invalid_args = _get_invalid_args(current_task, settings_dict)
+        logger.debug("Removing invalid args (%s) from function.", str(invalid_args))
+        valid_settings = {
+            key: settings_dict[key] for key in settings_dict if key not in invalid_args
+        }
 
-    if post_processs_in_loop:
-        output = post_processs_in_loop(output, settings)
+        # Call the task function. If "settings" is one of the arguments,
+        # substitute that with the settings object.
 
-    # If any setting has been changed, add as a result.
-    if isinstance(output, Settings):
-        new_output = {}
-        for setting in output:
-            name = setting.name
-            if name is None:
-                continue
-            if name in sweeps:
-                continue
-            if setting not in original_settings:
-                new_output[name] = setting.value
-                continue
-            comparison = False
-            try:
-                # Comparison for normal setting values.
-                comparison = setting.value != original_settings[name].value
-                if (
-                    comparison
-                ):  # This is necessary to catch results that cannot be compared.
-                    pass
-            except Exception:  # pylint: disable=broad-exception-caught
+        if _settings_in_args(current_task):
+            valid_settings["settings"] = settings
+        output = current_task(**valid_settings)
+
+        if post_processs_in_loop:
+            output = post_processs_in_loop(output, settings)
+
+        # If any setting has been changed, add as a result.
+
+        if isinstance(output, Settings):
+            new_output = {}
+            for setting in output:
+                name = setting.name
+                if name is None:
+                    continue
+                if name in sweeps:
+                    continue
+                if setting not in original_settings:
+                    new_output[name] = setting.value
+                    continue
+                comparison = False
                 try:
-                    # Comparison for array-like setting values.
-                    comparison = (setting.value != original_settings[name].value).any()
+                    # Comparison for normal setting values.
+
+                    comparison = setting.value != original_settings[name].value
+                    if (
+                        comparison
+                    ):  # This is necessary to catch results that cannot be compared.
+                        pass
                 except Exception:  # pylint: disable=broad-exception-caught
-                    pass
-            if comparison:
-                new_output[name] = setting.value
-        output = new_output
+                    try:
+                        # Comparison for array-like setting values.
+                        comparison = (
+                            setting.value != original_settings[name].value
+                        ).any()
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        pass
+                    if comparison:
+                        new_output[name] = setting.value
+            output = new_output
+        if isinstance(output, dict):
+            final_result.update(output)
+        else:
+            final_result = output
 
     output_as_dict = {
-        "output": output,
-        "settings_with_relations": {
-            key: settings_dict[key] for key in settings_with_relations
-        },
+        "output": final_result,
+        "settings_with_relations": {},  # TODO: REMOVE THIS
     }
     return output_as_dict
 
 
 def run(
-    task: Callable[..., TaskOutputType],
+    task: None | Callable[..., TaskOutputType],
     settings: Optional[Settings] = None,
     sweeps: Optional[SweepsType] = None,
     pre_process_before_loop: Optional[Callable[[Settings], None]] = None,
@@ -135,13 +153,10 @@ def run(
     post_process_in_loop: Optional[
         Callable[[Settings, TaskOutputType], TaskOutputType]
     ] = None,
-    post_process_after_loop: Optional[  # pylint: disable=unused-argument
-        Callable[[Settings, SweepsStandardType], DataCoordinatesType]
-    ] = None,
     parallelize: bool = False,
     expand_data: bool = True,
     n_cores: Optional[int] = None,
-    jupyter_compability_mode: bool = False,
+    jupyter_compatibility_mode: bool = False,
 ) -> SimulationResult:
     """
     Runs the simulation for a given task.
@@ -177,10 +192,27 @@ def run(
       to indices in the list or tuple.
     * If task returns a single number, the data can be accessed as ``result.data``.
 
+    The execution of the task and the evaluation of the relations can be parallelized using multi-processing
+    by providing the argument ``parallelize=True``. While the parallelization works well in most cases, there
+    are situations when the parallelization overhead is higher than the benefit.
+
+    * It is not recommended to parallelize the execution if the task function contains an internal
+      parallelization mechanism. For example, ``numpy.linalg.inv`` is already parallized which results in very
+      inefficient execution if ``parallize`` is set to `True` for tasks requiring matrix inversion.
+    * When processing large datasets, copying the data between the processes might result in a large overhead.
+      Operating systems supporting ``fork()`` in principle do not create a copy of read-only data, but in
+      python just accessing an object increments it's reference count, triggering the copy logic.
+    * For parallelization, pyqsl uses ``multiprocessing`` library, which is not fully supported with
+      interactive interpreters such as jupyter notebook. The execution might hang unexpectedly.
+    * Multiprocessing with interactive interpreter and Windows OS is problematic and likely results in a crash.
+      In order to avoid one of the known problems, write your task function in a separate python file instead
+      of e.g a cell of a jupyter notebook. You can also try setting ``jupyter_compatibility_mode=True``.
+
     Args:
         task:
             A reference to the function used for simulation. The function can accept any number of inputs
-            and should return either a tuple, a single number or a dictionary.
+            and should return either a tuple, a single number or a dictionary. Can also be a sequence of
+            tasks, in which case all of them are executed in order.
         settings: Settings for the run.
         sweeps:
             A dictionary containing the parameters that are being swept as keys and arrays of swept
@@ -199,7 +231,7 @@ def run(
         n_cores:
             Number of cores to use in parallel processing. If None, all the available cores are used (``N_max``).
             For negative numbers, ``N_max + n_cores`` is used.
-        jupyter_compability_mode:
+        jupyter_compatibility_mode:
             If running in jupyter on windows, this needs to be set to True. This is due to a weird behaviour in
             multiprocessing, which requires the task to be saved to a file. When using this mode, the task
             function needs to be written in a very specific way. For example, all the imports needed
@@ -255,6 +287,7 @@ def run(
     start_time = datetime.datetime.now()
     logger.info("Simulation started at %s", str(start_time))
     settings = settings or Settings()
+    settings = copy.deepcopy(settings)
     sweeps_std_form = {} if sweeps is None else convert_sweeps_to_standard_form(sweeps)
     dims = [len(sweep_values) for sweep_values in sweeps_std_form.values()]
 
@@ -262,51 +295,104 @@ def run(
     logger.info("Sweep dimensions: %s.", str(dims))
     output_array: list[Optional[dict[str, Any]]] = [None] * N_tot
 
-    settings = copy.deepcopy(settings)
     if pre_process_before_loop:
         pre_process_before_loop(settings)
 
-    windows_and_jupyter = jupyter_compability_mode
+    windows_and_jupyter = jupyter_compatibility_mode
     if parallelize and windows_and_jupyter:
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
+
+        if not callable(task):
+            raise ValueError(
+                f"When using 'jupyter_compatibility_mode' task must be Callable. Got {type(task)}."
+            )
         with open("./tmp_simulation_task.py", "w", encoding="utf-8") as file:
             file.write(
                 inspect.getsource(task).replace(task.__name__, "simulation_task")
             )
-        # Note, This does not work within pytest
+
+        # Note, this does not work within pytest
+
         from tmp_simulation_task import (  # pylint: disable=import-error,import-outside-toplevel
             simulation_task,
         )
     else:
         simulation_task = task
 
-    simulation_loop_body_partial = partial(
-        _simulation_loop_body,
-        settings=settings,
-        dims=dims,
-        sweeps=sweeps_std_form,
-        pre_process_in_loop=pre_process_in_loop,
-        post_processs_in_loop=post_process_in_loop,
-        task=simulation_task,
-    )
+    settings.resolve_relations()
+    pool: LinearPool | mp.pool.Pool
     if parallelize:
-        if n_cores is not None:
-            if n_cores < 0:
-                max_nbr_cores = len(psutil.Process().cpu_affinity())
-                n_cores = np.max([max_nbr_cores + n_cores, 1])
-        with mp.Pool(processes=n_cores) as p:
-            output_array = list(
-                tqdm.tqdm(
-                    p.imap(simulation_loop_body_partial, range(N_tot)),
-                    total=N_tot,
-                    smoothing=0,
-                )
-            )
+        cores = psutil.Process().cpu_affinity()
+        max_nbr_cores = len(cores) if cores else 1
+        if n_cores is None:
+            used_cores = max_nbr_cores
+        elif n_cores < 0:
+            used_cores = np.max([max_nbr_cores + n_cores, 1])
+        else:
+            used_cores = n_cores
+        pool = mp.Pool(processes=used_cores)
+        execution_settings = {"chunksize": calculate_chunksize(used_cores, N_tot)}
     else:
-        for ii in tqdm.tqdm(range(N_tot)):
-            output = simulation_loop_body_partial(ii)
-            output_array[ii] = output
+        pool = LinearPool()
+        used_cores = 1
+        execution_settings = {}
+
+    with pool:
+        resolved_settings_dataset = resolve_relations_with_sweeps(
+            settings=settings,
+            sweeps=sweeps_std_form,
+            pool=pool,
+            parallelize=parallelize,
+            n_cores=used_cores,
+        )
+        setting_names_for_tasks = list(resolved_settings_dataset.data_vars)
+        for sweep_name in sweeps_std_form:
+            if sweep_name not in setting_names_for_tasks:
+                setting_names_for_tasks.append(sweep_name)
+
+        setting_dim_dict = {
+            str(setting_name): [
+                str(dim) for dim in resolved_settings_dataset[setting_name].dims
+            ]
+            for setting_name in resolved_settings_dataset.data_vars
+        }
+        setting_value_dict = {
+            str(setting_name): resolved_settings_dataset[setting_name].values
+            for setting_name in resolved_settings_dataset.data_vars
+        }
+        get_settings_task = partial(
+            _get_settings_for_resolve_in_loop,
+            needed_setting_names=setting_names_for_tasks,
+            setting_value_dict=setting_value_dict,
+            setting_dim_dict=setting_dim_dict,
+            dims=dims,
+            sweeps=sweeps_std_form,
+            mapped_setting_names=dict(
+                zip(setting_names_for_tasks, setting_names_for_tasks)
+            ),
+        )
+        setting_value_dicts = list(map(get_settings_task, range(N_tot)))
+        simulation_loop_body_partial = partial(
+            _simulation_loop_body,
+            settings=settings,
+            sweeps=sweeps_std_form,
+            pre_process_in_loop=pre_process_in_loop,
+            post_processs_in_loop=post_process_in_loop,
+            task=simulation_task,
+        )
+        output_array = list(
+            tqdm.tqdm(
+                pool.imap(
+                    simulation_loop_body_partial,
+                    setting_value_dicts,
+                    **execution_settings,
+                ),
+                total=N_tot,
+                leave=True,
+                desc="Resolving tasks",
+            )
+        )
 
     end_time = datetime.datetime.now()
     logger.info(
@@ -320,6 +406,7 @@ def run(
         sweeps_std_form,
         expand_data=expand_data,
         dims=dims,
+        resolved_settings_dataset=resolved_settings_dataset,
     )
     simulation_result = SimulationResult(dataset)
     return simulation_result
@@ -331,52 +418,54 @@ def _create_dataset(
     sweeps: SweepsStandardType,
     expand_data,
     dims,
+    resolved_settings_dataset: xr.Dataset,
 ) -> xr.Dataset:
     """
     Creates xarray dataset from simulation results.
 
     Args:
         data_coordinates: dict of data coordinate names and their additional sweeps.
+        resolved_settings_dataset: Dataset containing the resolved relations for sweeps.
     """
     # pylint: disable=too-many-branches,too-many-statements,too-many-locals
-    coords = convert_sweeps_to_standard_form(sweeps)
-    # output_array:
-    # [prod(Dsweeps), dict['output': dict[Doutput], 'settings_with_relations': 'dict']
 
-    # reshaped_array:
-    # [Dsweeps, dict['output': dict[Doutput], 'settings_with_relations': 'dict']
     reshaped_array = np.reshape(np.array(output_array, dtype=object), dims)
     # Expand
     reshaped_array_expanded = _expand_dict_from_data(reshaped_array)
 
     dataset: xr.Dataset
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]] = {}
-    extended_coords: dict[str, Any] = copy.copy(coords)
+    extended_coords: dict[str, Any] = {
+        sweep: create_numpy_array_with_fixed_dimensions(
+            sweeps[sweep], tuple([dims[ii]])
+        )
+        for ii, sweep in enumerate(sweeps)
+    }
+
     # Add settings as variables
+
     if len(dims):
         _add_settings_as_variables(
             data_vars,
-            settings,
-            extended_coords,
-            reshaped_array_expanded["settings_with_relations"],
-            dims,
+            resolved_settings_dataset,
         )
 
     if not expand_data:
-        coord_names = tuple(coords) + tuple(
+        coord_names = tuple(sweeps) + tuple(
             f"index_{ii}"
             for ii in range(len(reshaped_array_expanded["output"].shape) - len(dims))
         )
         data_vars["data"] = (coord_names, reshaped_array_expanded["output"], {})
     else:
         # Check type from first element
+
         first_element = reshaped_array.flat[0]["output"]
         if isinstance(first_element, collections.abc.Mapping):
             output_array_expanded = _expand_dict_from_data(
                 reshaped_array_expanded["output"]
             )
             for key, value in output_array_expanded.items():
-                data_vars[key] = (tuple(coords), value, {})
+                data_vars[key] = (tuple(sweeps), value, {})
         elif isinstance(first_element, (collections.abc.Sequence, np.ndarray)) and (
             not isinstance(first_element, str)
         ):
@@ -386,32 +475,30 @@ def _create_dataset(
             extended_coords["index"] = np.arange(
                 output_array_expanded.size // np.prod(dims)
             )
-            coord_names = ("index",) + tuple(coords)
+            coord_names = ("index",) + tuple(sweeps)
             coord_names = coord_names + tuple(
                 f"dummy_{ii}"
                 for ii in range(len(output_array_expanded.shape) - len(coord_names))
             )
             data_vars["data"] = (coord_names, output_array_expanded, {})
         else:
-            data_vars["data"] = (tuple(coords), reshaped_array_expanded["output"], {})
+            data_vars["data"] = (tuple(sweeps), reshaped_array_expanded["output"], {})
 
     if len(dims) == 0:
         # A special check to convert arrays to zero dimensional numpy arrays to protect
         # the underlying data structure.
+
         for data_var, entry in data_vars.items():
             data_vars[data_var] = (
                 entry[0],
-                _create_numpy_array_with_fixed_dimensions(entry[1], dims),
+                create_numpy_array_with_fixed_dimensions(entry[1], dims),
                 entry[2],
             )
     _add_dimensions_to_data_var(
         data_vars,
         settings,
         extended_coords,
-        setting_values=_expand_dict_from_data(
-            reshaped_array_expanded["settings_with_relations"]
-        ),
-        dims=dims,
+        setting_values=resolved_settings_dataset,
     )
     for data_var, entry in data_vars.items():
         data_vars[data_var] = (
@@ -427,11 +514,16 @@ def _create_dataset(
                 "units": settings[coord_name].unit if coord_name in settings else ""
             },
         )
-    settings_resolved = settings.copy()
-    settings_resolved.resolve_relations()
+
+    # Remove sweeps from datavars.
+
+    for sweep in sweeps:
+        if sweep in data_vars:
+            del data_vars[sweep]
 
     # Try convert data that has numpy object type to any natural datatype.
     # If conversion cannot be done, retain in original form.
+
     try:
         data_vars_converted = {}
         for data_var, entry in data_vars.items():
@@ -446,69 +538,44 @@ def _create_dataset(
         dataset = xr.Dataset(
             data_vars=data_vars_converted,
             coords=extended_coords,
-            attrs={"settings": settings_resolved},
+            attrs={"settings": settings},
         )
     except:  # pylint: disable=bare-except
         dataset = xr.Dataset(
             data_vars=data_vars,
             coords=extended_coords,
-            attrs={"settings": settings_resolved},
+            attrs={"settings": settings},
         )
     dataset = dataset.pint.quantify()
-
     return dataset
 
 
 def _add_settings_as_variables(
-    data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
-    settings: Settings,
-    sweeps: SweepsStandardType,
-    setting_values,
-    dims,
+    data_vars: dict[str, Any],
+    setting_values: xr.Dataset,
 ):
     """
     Adds settings with resolved relations as data variables.
 
     Additionally, adds dimensions of all the settings as coordinates.
     """
-    hierarchy = settings.get_relation_hierarchy()
-
-    # Map from setting names to setting names that define their dimensionality.
-    setting_dimension_map: dict[str, set[str]] = {}
-    for setting_name in sweeps:
-        setting = settings[setting_name]
-        dependent_names = settings.get_dependent_setting_names(setting, hierarchy)
-        for dependent_name in dependent_names:
-            if dependent_name not in setting_dimension_map:
-                setting_dimension_map[dependent_name] = set()
-            setting_dimension_map[dependent_name].add(setting_name)
-    setting_values = _expand_dict_from_data(setting_values)
-    for dependent_name, sweep_names in setting_dimension_map.items():
-        new_slice: list[int | slice] = [0] * len(dims)
-        name_indices = []
-        for sweep_name in sweep_names:
-            name_index = list(sweeps.keys()).index(sweep_name)
-            name_indices.append(name_index)
-            new_slice[name_index] = slice(None)
-        sweep_names_in_order = [
-            list(sweeps.keys())[index] for index in sorted(name_indices)
-        ]
-        sliced_values = setting_values[dependent_name][tuple(new_slice)]
-        data_vars[dependent_name] = (tuple(sweep_names_in_order), sliced_values, {})
+    for setting_name in setting_values:
+        data_vars[str(setting_name)] = (
+            setting_values[setting_name].dims,
+            setting_values[setting_name].values,
+            {},
+        )
 
 
 def _add_dimensions_to_data_var(
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
     settings: Settings,
     sweeps: SweepsStandardType,
-    setting_values: dict[str, Any],
-    dims,
+    setting_values: xr.Dataset,
 ):
     """
     Adds settings with dimensions as data vars. Also adds dimensions to data_vars with names that align with settings.
     """
-    # Add setting dimensions
-    slice_for_setting_values = tuple([0] * len(dims))
     for setting in settings:
         if setting.dimensions:
             for dimension in setting.dimensions:
@@ -532,10 +599,7 @@ def _add_dimensions_to_data_var(
             if setting.name not in data_vars:
                 data_vars[setting.name] = (
                     setting.dimensions,
-                    # vstack_and_reshape(setting_values[setting.name])
-                    vstack_and_reshape(
-                        setting_values[setting.name][slice_for_setting_values]
-                    )
+                    vstack_and_reshape(setting_values[setting.name].values)
                     if setting.name in setting_values
                     else setting.value,
                     {},
@@ -548,30 +612,11 @@ def _add_dimensions_to_data_var(
                 )
 
 
-def _create_numpy_array_with_fixed_dimensions(data: Any, dims: tuple[int]) -> Any:
-    """
-    Creates a numpy array from data with dimensions given by dims.
-
-    If directly converting the array to numpy array would result in an array of different
-    shape, an object array is created instead.
-    """
-    data_array = np.array(data)
-    if data_array.shape != dims:
-        data_array = np.zeros(dims, dtype=object)
-        if dims:
-            for ii in range(np.prod(dims)):
-                indices = np.unravel_index(ii, dims)
-                data_array.flat[ii] = data[indices]
-        else:
-            data_array[()] = data
-    return data_array
-
-
 def _make_list_unique(seq):
     """
     Makes the list unique and ordered.
 
-    From https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order
+    From https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order.
     """
     seen = set()
     seen_add = seen.add
@@ -645,3 +690,28 @@ def _settings_in_args(func) -> bool:
     """
     args, _, _, _, _, _, _ = inspect.getfullargspec(func)
     return "settings" in args
+
+
+class LinearPool:
+    """
+    Implements a context-manager for executing linear tasks.
+
+    Supports three functions, ``map``, and ``imap``, and ``imap_unordered`` which
+    all call the built-in ``map`` function.
+    """
+
+    def __init__(self):
+        self.map = map
+        self.imap = map
+        self.imap_unordered = map
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, *_):
+        """
+        Returns False if any errors occurred, otherwise True.
+        """
+        if exc_type is not None:
+            return False
+        return True

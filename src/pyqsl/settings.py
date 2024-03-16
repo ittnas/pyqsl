@@ -20,6 +20,7 @@ import networkx as nx
 
 logger = logging.getLogger(__name__)
 # pyright: reportPropertyTypeMismatch=false
+# pylint: disable=cyclic-import
 
 
 @dataclass
@@ -59,6 +60,7 @@ class Setting:
     )
     dimensions: list[str] = dataclasses.field(default_factory=list)
     _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
+    description: Optional[str] = ""
 
     def __post_init__(self):
         if self.use_relation is None:
@@ -243,7 +245,6 @@ class Setting:
         """
         if isinstance(value, property):
             return
-            # value = []
 
         new_dimension_list: list[str] = []
         sequence_of_dimensions: Sequence[str | Setting]
@@ -318,6 +319,16 @@ class Settings:
                     output
                     + f", value={setting._value}"  # pylint: disable=protected-access
                 )
+            if setting.description:
+                splits = setting.description.split(".", 1)
+                n_letters = 40
+                description = splits[0] + "." if len(splits) > 1 else splits[0]
+                description = (
+                    description[:n_letters] + ".."
+                    if len(description) > (n_letters + 2)
+                    else description
+                )
+                output = output + " - " + description
             output = output + "\n"
         return output
 
@@ -543,6 +554,26 @@ class Settings:
             return []
         descendants = nx.descendants(relation_hierarchy, setting.name)
         return sorted(descendants)
+
+    def get_needed_settings(
+        self, setting: Setting, relation_hierarchy: Optional[nx.DiGraph] = None
+    ) -> list[str]:
+        """
+        Returns the names for settings needed to evaluate the given setting.
+
+        Args:
+            setting: Setting for which needed settings are searched for.
+            relation_hierarchy: Relation hierarchy for the settings tree. If None, a new hierarchy is built.
+
+        Returns:
+            List of all settings needed to evaluate the given setting.
+        """
+        if relation_hierarchy is None:
+            relation_hierarchy = self.get_relation_hierarchy()
+        if setting.name not in relation_hierarchy:
+            return []
+        ancestors = nx.ancestors(relation_hierarchy, setting.name)
+        return sorted(ancestors)
 
     def copy(self):
         """
