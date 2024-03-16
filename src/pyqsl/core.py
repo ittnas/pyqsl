@@ -14,8 +14,6 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 import psutil
-
-# import tqdm
 import tqdm.auto as tqdm
 import xarray as xr
 
@@ -23,12 +21,12 @@ from pyqsl.common import (
     SweepsStandardType,
     SweepsType,
     TaskOutputType,
+    _get_settings_for_resolve_in_loop,
+    calculate_chunksize,
     convert_sweeps_to_standard_form,
-    vstack_and_reshape,
     create_numpy_array_with_fixed_dimensions,
     resolve_relations_with_sweeps,
-    calculate_chunksize,
-    _get_settings_for_resolve_in_loop,
+    vstack_and_reshape,
 )
 from pyqsl.settings import Settings
 from pyqsl.simulation_result import SimulationResult
@@ -67,7 +65,6 @@ def _simulation_loop_body(
     original_settings = settings
     settings = original_settings.copy()
     for setting_name, setting_value in setting_value_dict.items():
-
         # Get the setting value from previously evaluated setting
 
         setattr(settings, setting_name, setting_value)
@@ -117,7 +114,6 @@ def _simulation_loop_body(
                     continue
                 comparison = False
                 try:
-
                     # Comparison for normal setting values.
 
                     comparison = setting.value != original_settings[name].value
@@ -304,11 +300,10 @@ def run(
 
     windows_and_jupyter = jupyter_compatibility_mode
     if parallelize and windows_and_jupyter:
-
         # Weird fix needed due to a bug somewhere in multiprocessing if running windows + jupyter
         # https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3
 
-        if not isinstance(task, Callable):
+        if not callable(task):
             raise ValueError(
                 f"When using 'jupyter_compatibility_mode' task must be Callable. Got {type(task)}."
             )
@@ -326,7 +321,7 @@ def run(
         simulation_task = task
 
     settings.resolve_relations()
-
+    pool: LinearPool | mp.pool.Pool
     if parallelize:
         cores = psutil.Process().cpu_affinity()
         max_nbr_cores = len(cores) if cores else 1
@@ -356,8 +351,16 @@ def run(
             if sweep_name not in setting_names_for_tasks:
                 setting_names_for_tasks.append(sweep_name)
 
-        setting_dim_dict = {str(setting_name): [str(dim) for dim in resolved_settings_dataset[setting_name].dims] for setting_name in resolved_settings_dataset.data_vars}
-        setting_value_dict = {str(setting_name): resolved_settings_dataset[setting_name].values for setting_name in resolved_settings_dataset.data_vars}
+        setting_dim_dict = {
+            str(setting_name): [
+                str(dim) for dim in resolved_settings_dataset[setting_name].dims
+            ]
+            for setting_name in resolved_settings_dataset.data_vars
+        }
+        setting_value_dict = {
+            str(setting_name): resolved_settings_dataset[setting_name].values
+            for setting_name in resolved_settings_dataset.data_vars
+        }
         get_settings_task = partial(
             _get_settings_for_resolve_in_loop,
             needed_setting_names=setting_names_for_tasks,
@@ -365,7 +368,9 @@ def run(
             setting_dim_dict=setting_dim_dict,
             dims=dims,
             sweeps=sweeps_std_form,
-            mapped_setting_names=dict(zip(setting_names_for_tasks, setting_names_for_tasks)),
+            mapped_setting_names=dict(
+                zip(setting_names_for_tasks, setting_names_for_tasks)
+            ),
         )
         setting_value_dicts = list(map(get_settings_task, range(N_tot)))
         simulation_loop_body_partial = partial(
@@ -379,11 +384,13 @@ def run(
         output_array = list(
             tqdm.tqdm(
                 pool.imap(
-                    simulation_loop_body_partial, setting_value_dicts, **execution_settings
+                    simulation_loop_body_partial,
+                    setting_value_dicts,
+                    **execution_settings,
                 ),
                 total=N_tot,
                 leave=True,
-                desc='Resolving tasks',
+                desc="Resolving tasks",
             )
         )
 
@@ -422,11 +429,6 @@ def _create_dataset(
     """
     # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 
-    # output_array:
-    # [prod(Dsweeps), dict['output': dict[Doutput], 'settings_with_relations': 'dict']
-    # reshaped_array:
-    # [Dsweeps, dict['output': dict[Doutput], 'settings_with_relations': 'dict']
-
     reshaped_array = np.reshape(np.array(output_array, dtype=object), dims)
     # Expand
     reshaped_array_expanded = _expand_dict_from_data(reshaped_array)
@@ -455,7 +457,6 @@ def _create_dataset(
         )
         data_vars["data"] = (coord_names, reshaped_array_expanded["output"], {})
     else:
-
         # Check type from first element
 
         first_element = reshaped_array.flat[0]["output"]
@@ -484,7 +485,6 @@ def _create_dataset(
             data_vars["data"] = (tuple(sweeps), reshaped_array_expanded["output"], {})
 
     if len(dims) == 0:
-
         # A special check to convert arrays to zero dimensional numpy arrays to protect
         # the underlying data structure.
 
@@ -499,7 +499,6 @@ def _create_dataset(
         settings,
         extended_coords,
         setting_values=resolved_settings_dataset,
-        dims=dims,
     )
     for data_var, entry in data_vars.items():
         data_vars[data_var] = (
@@ -552,7 +551,7 @@ def _create_dataset(
 
 
 def _add_settings_as_variables(
-    data_vars: dict[str, tuple[tuple[str, ...], Any, dict]],
+    data_vars: dict[str, Any],
     setting_values: xr.Dataset,
 ):
     """
@@ -561,7 +560,7 @@ def _add_settings_as_variables(
     Additionally, adds dimensions of all the settings as coordinates.
     """
     for setting_name in setting_values:
-        data_vars[setting_name] = (
+        data_vars[str(setting_name)] = (
             setting_values[setting_name].dims,
             setting_values[setting_name].values,
             {},
@@ -573,7 +572,6 @@ def _add_dimensions_to_data_var(
     settings: Settings,
     sweeps: SweepsStandardType,
     setting_values: xr.Dataset,
-    dims,
 ):
     """
     Adds settings with dimensions as data vars. Also adds dimensions to data_vars with names that align with settings.

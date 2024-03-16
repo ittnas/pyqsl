@@ -169,10 +169,20 @@ class Equation(Relation):
         Known issue: numexpr does not support string arguments.
         """
         try:
-            expr = ne.evaluate(self.equation, local_dict=parameter_values, global_dict={})
+            expr = ne.evaluate(
+                self.equation, local_dict=parameter_values, global_dict={}
+            )
         except ValueError as err:
+            values = {
+                self.parameters[parameter]: value
+                for parameter, value in parameter_values.items()
+            }
             raise ValueError(
-                f"An error occurred when evaluating equation '{str(self)}' for mapped settings {list(self.parameters.values())} with values { {self.parameters[parameter]: value for parameter, value in parameter_values.items()} }."
+                (
+                    f"An error occurred when evaluating equation '{str(self)}'"
+                    f"for mapped settings {list(self.parameters.values())} with"
+                    f"values { values }."
+                )
             ) from err
         try:
             # ne creates 0-d arrays from scalars. Try to convert back.

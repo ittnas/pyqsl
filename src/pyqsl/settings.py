@@ -14,14 +14,13 @@ import dataclasses
 import logging
 import types
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union
 
 import networkx as nx
-import xarray as xr
-import numpy as np
 
 logger = logging.getLogger(__name__)
 # pyright: reportPropertyTypeMismatch=false
+# pylint: disable=cyclic-import
 
 
 @dataclass
@@ -323,8 +322,12 @@ class Settings:
             if setting.description:
                 splits = setting.description.split(".", 1)
                 n_letters = 40
-                description = splits[0] + "." if len(splits)>1 else splits[0]
-                description = description[:n_letters] + ".." if len(description) > (n_letters + 2) else description
+                description = splits[0] + "." if len(splits) > 1 else splits[0]
+                description = (
+                    description[:n_letters] + ".."
+                    if len(description) > (n_letters + 2)
+                    else description
+                )
                 output = output + " - " + description
             output = output + "\n"
         return output
