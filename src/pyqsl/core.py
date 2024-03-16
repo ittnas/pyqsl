@@ -355,10 +355,14 @@ def run(
         for sweep_name in sweeps_std_form:
             if sweep_name not in setting_names_for_tasks:
                 setting_names_for_tasks.append(sweep_name)
+
+        setting_dim_dict = {str(setting_name): [str(dim) for dim in resolved_settings_dataset[setting_name].dims] for setting_name in resolved_settings_dataset.data_vars}
+        setting_value_dict = {str(setting_name): resolved_settings_dataset[setting_name].values for setting_name in resolved_settings_dataset.data_vars}
         get_settings_task = partial(
             _get_settings_for_resolve_in_loop,
             needed_setting_names=setting_names_for_tasks,
-            setting_value_dataset=resolved_settings_dataset,
+            setting_value_dict=setting_value_dict,
+            setting_dim_dict=setting_dim_dict,
             dims=dims,
             sweeps=sweeps_std_form,
             mapped_setting_names=dict(zip(setting_names_for_tasks, setting_names_for_tasks)),

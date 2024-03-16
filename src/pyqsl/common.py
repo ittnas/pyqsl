@@ -3,11 +3,8 @@ Definitions used by more than one other module.
 """
 from __future__ import annotations
 import logging
-import types
 from typing import Any, Sequence, TYPE_CHECKING
-import numpy.typing as npt
 import numpy as np
-from pandas._libs.tslibs import conversion
 
 from pyqsl.settings import Setting, Settings
 from pyqsl.many_to_many_relation import ManyToManyRelation, EvaluatedManyToManyRelation
@@ -16,9 +13,6 @@ import xarray as xr
 import networkx as nx
 
 from functools import partial
-import copy
-import multiprocessing as mp
-import psutil
 import tqdm.auto as tqdm
 
 SweepsType = dict[str | Setting, Sequence]
@@ -232,11 +226,13 @@ def _evaluate_many_to_many_relation_with_sweeps(
     if relation in evaluated_many_to_many_relations:
         return
     mapped_setting_names = relation.get_mapped_setting_names()
-
+    setting_dim_dict = {str(setting_name): [str(dim) for dim in dataset[setting_name].dims] for setting_name in dataset.data_vars}
+    setting_value_dict = {str(setting_name): dataset[setting_name].values for setting_name in dataset.data_vars}
     get_settings_task = partial(
         _get_settings_for_resolve_in_loop,
         needed_setting_names=needed_settings_for_node,
-        setting_value_dataset=dataset,
+        setting_value_dict=setting_value_dict,
+        setting_dim_dict=setting_dim_dict,
         dims=dims,
         sweeps=sweeps,
         mapped_setting_names=mapped_setting_names,
@@ -287,11 +283,13 @@ def _evaluate_relation_with_sweeps(
     The fetched setting values are then used to evaluate the relations using the pool,
     which can be either parallel or sequential.
     """
-
+    setting_dim_dict = {str(setting_name): [str(dim) for dim in dataset[setting_name].dims] for setting_name in dataset.data_vars}
+    setting_value_dict = {str(setting_name): dataset[setting_name].values for setting_name in dataset.data_vars}
     get_settings_task = partial(
         _get_settings_for_resolve_in_loop,
         needed_setting_names=needed_settings_for_node,
-        setting_value_dataset=dataset,
+        setting_value_dict=setting_value_dict,
+        setting_dim_dict=setting_dim_dict,
         dims=dims,
         sweeps=sweeps,
         mapped_setting_names=mapped_setting_names,
@@ -322,7 +320,7 @@ def _evaluate_relation_in_loop(setting_dict: dict[str, Any], relation, settings:
     return relation.evaluate(**parameter_dict)
 
 
-def _get_settings_for_resolve_in_loop(ii: int, needed_setting_names: list[str], setting_value_dataset: xr.Dataset, dims: list[int], sweeps: SweepsStandardType, mapped_setting_names: dict[str, str])->dict[str, Any]:
+def _get_settings_for_resolve_in_loop(ii: int, needed_setting_names: list[str], setting_value_dict: dict[str, Any], setting_dim_dict: dict[str, list[str]], dims: list[int], sweeps: SweepsStandardType, mapped_setting_names: dict[str, str])->dict[str, Any]:
     """
     Creates a dictionary of that maps the setting names to setting values for `needed_setting_names`.
 
@@ -352,11 +350,11 @@ def _get_settings_for_resolve_in_loop(ii: int, needed_setting_names: list[str], 
 
             sweep_ind = int(current_ind[current_sweeps.index(setting_name)])
             setting_values[setting_name] = sweeps[setting_name][sweep_ind]
-        if setting_name in setting_value_dataset:
+        if setting_name in setting_value_dict:
 
             # Get the setting value from previously evaluated setting
 
-            setting_name_dims = setting_value_dataset[setting_name].dims
+            setting_name_dims = setting_dim_dict[setting_name]
             list_descriptor = tuple(
                 [
                     current_ind[ii]
@@ -364,7 +362,7 @@ def _get_settings_for_resolve_in_loop(ii: int, needed_setting_names: list[str], 
                     if sweep_name in setting_name_dims
                 ]
             )
-            setting_value = setting_value_dataset[setting_name].values[list_descriptor]
+            setting_value = setting_value_dict[setting_name][list_descriptor]
             setting_values[setting_name] = setting_value
     return setting_values
 
