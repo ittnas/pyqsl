@@ -176,3 +176,78 @@ def test_dimensions():
         settings.a.dimensions = "abab"
     with pytest.raises(TypeError):
         settings.a.dimensions = [["abab"]]
+
+
+def test_indexing():
+    settings = pyqsl.Settings()
+    settings["c"] = 2
+    assert settings.c == 2
+    settings["d"] = pyqsl.Setting(value=3, dimensions=["b"])
+    assert settings.d.value == 3
+    assert settings.d.dimensions == ["b"]
+
+
+def test_init_with_relations():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = pyqsl.Setting(relation="a")
+    assert settings.b.use_relation == True
+    settings.b = pyqsl.Setting(relation="a", use_relation=False)
+    assert settings.b.use_relation == False
+    settings.b.relation = "a"
+    assert settings.b.use_relation == True
+
+
+def test_many_to_many_relations():
+    settings = pyqsl.Settings()
+
+    def function(var1, var2):
+        return var1, var2
+
+    settings.a = 2
+    settings.b = 3
+    settings.c = None
+    settings.d = None
+    settings.e = pyqsl.Setting(relation="c + d")
+    settings.add_many_to_many_relation(
+        pyqsl.ManyToManyRelation(
+            function=function,
+            parameters={"var1": "a", "var2": "b"},
+            output_parameters={"c": 0, "d": 1},
+        )
+    )
+    settings.resolve_relations()
+    assert settings.c == 2
+    assert settings.d == 3
+    assert settings.e == 5
+    settings.resolve_relations()
+    assert settings.c == 2
+    assert settings.d == 3
+    assert settings.e == 5
+    pyqsl.run(None, settings)
+    pyqsl.run(None, settings, sweeps={"a": [0, 1, 2]})
+    pyqsl.run(None, settings, sweeps={"a": [0, 1, 2], "b": [3, 4]})
+
+
+def test_many_to_many_relations_with_dict():
+    settings = pyqsl.Settings()
+
+    def function(var1, var2):
+        return {"v1": var1, "v2": var2}
+
+    settings.a = 2
+    settings.b = 3
+    settings.c = None
+    settings.d = None
+    settings.e = pyqsl.Setting(relation="c + d")
+    settings.add_many_to_many_relation(
+        pyqsl.ManyToManyRelation(
+            function=function,
+            parameters={"var1": "a", "var2": "b"},
+            output_parameters={"c": "v1", "d": "v2"},
+        )
+    )
+    settings.resolve_relations()
+    assert settings.c == 2
+    assert settings.d == 3
+    assert settings.e == 5

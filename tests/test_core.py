@@ -154,6 +154,35 @@ def test_task_that_returns_dicts(ab_settings):
     assert result.data[0, 0]["sum"] == -1.0
 
 
+def test_task_that_returns_settings(ab_settings):
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+        ab_settings.b: np.linspace(-1, 0, 5),
+    }
+
+    def task(a, b):
+        settings = pyqsl.Settings()
+        settings.c = a + b
+        return settings
+
+    result = pyqsl.run(task, ab_settings, sweeps=sweeps)
+    assert result.c.shape == (3, 5)
+
+
+def test_task_that_uses_settings(ab_settings):
+    sweeps = {
+        ab_settings.a.name: np.linspace(0, 1, 3),
+        ab_settings.b: np.linspace(-1, 0, 5),
+    }
+
+    def task(settings):
+        settings.c = settings.a + settings.b
+        return settings
+
+    result = pyqsl.run(task, ab_settings, sweeps=sweeps)
+    assert result.c.shape == (3, 5)
+
+
 def test_prepocessing(ab_settings):
     result = pyqsl.run(
         more_complicated_task, ab_settings, pre_process_before_loop=add_new_setting
@@ -239,3 +268,93 @@ def test_add_dimensions_and_run():
     sweeps = {"a": [1, 2]}
     result = pyqsl.run(task, settings, sweeps=sweeps)
     assert result.dataset.y.dims == ("a", "x")
+
+
+def test_run_with_complicated_shapes_in_return():
+    def task(a):
+        return {"b": [a, a, a]}
+
+    settings = pyqsl.Settings()
+    settings.a = 2
+    result = pyqsl.run(task, settings)
+    assert (result.b == [settings.a, settings.a, settings.a]).all()
+
+    def task(a):
+        return {"b": [[a, a], a, a]}
+
+    settings = pyqsl.Settings()
+    settings.a = 2
+    result = pyqsl.run(task, settings)
+    assert result.b[0] == [settings.a, settings.a]
+    sweeps = {"a": [0, 1]}
+    result = pyqsl.run(task, settings, sweeps=sweeps)
+    assert result.b[0][0] == [sweeps["a"][0], sweeps["a"][0]]
+
+    def task(a):
+        return [[a, a], a, a]
+
+    settings = pyqsl.Settings()
+    settings.a = 2
+    result = pyqsl.run(task, settings)
+    assert result.data[0] == [settings.a, settings.a]
+    sweeps = {"a": [0, 1]}
+    result = pyqsl.run(task, settings, sweeps=sweeps)
+    assert result.data[0][0] == [sweeps["a"][0], sweeps["a"][0]]
+
+
+def test_settings_with_reserved_names():
+    def task(data):
+        return data + 1
+
+    settings = pyqsl.Settings()
+    settings.data = 0
+    result = pyqsl.run(task, settings)
+    assert result.data == settings.data + 1
+    assert result.settings.data == settings.data
+
+    def task(a):
+        return {"copy": a + 1}
+
+    settings = pyqsl.Settings()
+    settings.a = 0
+    result = pyqsl.run(task, settings)
+    assert result.copy == settings.a + 1
+
+    def task(copy):
+        return {"a": copy + 1}
+
+    settings = pyqsl.Settings()
+    settings.copy = 0
+    with pytest.raises(TypeError):
+        result = pyqsl.run(task, settings)
+
+
+def test_dimensions_with_relations():
+    settings = pyqsl.Settings()
+    settings.a = [0, 1]
+    settings.y = pyqsl.Setting(value=2, dimensions=["a"])
+    assert settings.y.dimensions == ["a"]
+    settings = pyqsl.Settings()
+    settings.a = [0, 1]
+    settings.y = 2
+    settings.y.dimensions = ["a"]
+    assert settings.y.dimensions == ["a"]
+    settings = pyqsl.Settings()
+    settings.a = [0, 1]
+    settings.b = pyqsl.Setting(relation="a", dimensions=["a"])
+    settings.c = 0
+    result = pyqsl.run(None, settings=settings)
+    assert result.dataset.b.shape == (2,)
+    result = pyqsl.run(None, settings=settings, sweeps={"c": [0, 1, 2]})
+    assert result.dataset.b.shape == (2,)
+    assert result.dataset.c.shape == (3,)
+
+
+def test_that_setting_shape_is_correct():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = 3
+    settings.c = pyqsl.Setting(relation="a + b")
+    result = pyqsl.run(None, settings, sweeps=dict(a=np.linspace(0, 1, 3), b=[0, 2]))
+    assert result.c.shape == (3, 2)
+    result.dataset.c.plot()

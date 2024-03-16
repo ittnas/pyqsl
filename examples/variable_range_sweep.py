@@ -22,16 +22,22 @@ settings.y = 0
 settings.y.unit = "m"
 settings.z = 0
 settings.z.unit = "m"
+settings.aux = 0
+settings.aux.unit = "m"
 # Instead of sweeping in a rectangle for x and y, we want to sweep around the minimum of the target funtion.
 # Construct a relation that sweeps y around a cosine function of x.
+
+# Ideally, aux can be just replaced by y, but currently there is a bug that prevents that!
+
 # Notice that this is not a circular relation. The value of y in the equation refers to original value of y.
 # The result of the relation will create an "evaluated value", which will be used in the final calculation.
 # The original value of y will be adjusted by the sweep.
-settings.y.relation = pyqsl.Equation(equation="cos(2*3.1415*x) + y")
+settings.y.relation = pyqsl.Equation(equation="cos(2*3.1415*x) + aux")
 
-sweeps = {"x": np.linspace(-1, 1, 101), "y": np.linspace(-1, 1, 51)}
+sweeps = {"x": np.linspace(-1, 1, 101), "aux": np.linspace(-1, 1, 51)}
 result = pyqsl.run(height, settings=settings, sweeps=sweeps, parallelize=False)
-plt.pcolor(result.x, result.y, result.z, cmap="Greens")
+x, y, z = result.get(["x", "y", "z"])
+plt.pcolor(x, y, z, cmap="Greens")
 plt.xlabel(f"x ({settings.x.unit})")
 plt.ylabel(f"y ({settings.y.unit})")
 plt.show()

@@ -1,5 +1,12 @@
 pyqsl package
 =============
+Module contents
+---------------
+
+.. automodule:: pyqsl
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -36,10 +43,3 @@ pyqsl.simulation\_result module
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: pyqsl
-   :members:
-   :undoc-members:
-   :show-inheritance:

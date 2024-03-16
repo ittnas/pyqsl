@@ -76,3 +76,32 @@ def test_get(simulation_result):
     assert diff.shape == (11, 1, 7)
 
     assert simulation_result.get("diff").shape == (7, 11)
+
+
+def test_to_settings():
+    settings = pyqsl.Settings()
+    settings.a = [0, 1, 2]
+    settings.b = None
+    settings.b.relation = "a"
+    settings.b.dimensions = ["a"]
+    settings.c = 2
+
+    def task(a, b, c):
+        settings = pyqsl.Settings()
+        settings.d = np.mean(a) + np.mean(b) + c
+        return settings
+
+    result = pyqsl.run(task, settings=settings, sweeps={"c": [0, 1, 2]})
+    settings = result.to_settings()
+    assert settings.d.dimensions == ["c"]
+    assert settings.b.dimensions == ["a"]
+
+    def new_task(d):
+        settings = pyqsl.Settings()
+        settings.e = d
+        return settings
+
+    settings.e = None
+    settings.e.dimensions = ["c"]
+    new_settings = pyqsl.run(new_task, settings=settings).to_settings()
+    assert new_settings.e.dimensions == ["c"]

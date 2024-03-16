@@ -3,12 +3,13 @@ Create a settings object for pyqsl.
 
 Classes:
 
-    Setting
-    Settings
+    * Setting
+    * Settings
 """
 from __future__ import annotations
 
 import collections
+import copy
 import dataclasses
 import logging
 import types
@@ -18,6 +19,7 @@ from typing import Any, Optional, Sequence, Union
 import networkx as nx
 
 logger = logging.getLogger(__name__)
+# pyright: reportPropertyTypeMismatch=false
 
 
 @dataclass
@@ -45,16 +47,25 @@ class Setting:
     name: Optional[str] = None
     value: Optional[Any] = None
     unit: str = ""
-    relation: Optional["Relation"] = None
-    use_relation: bool = False
-    dimensions: list[str] = dataclasses.field(default_factory=list)
     _relation: Optional["Relation"] = dataclasses.field(
         init=False, repr=False, default=None
     )
-    _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
+    relation: Optional["Relation"] = None
+    use_relation: bool | None = None  # use_relation has to come after relation.
+    # The order of the values matter. _dimensions has to be first so that it is
+    # initialized before the value is changed by the setter.
     _dimensions: list[str] = dataclasses.field(
         init=False, repr=False, default_factory=list
     )
+    dimensions: list[str] = dataclasses.field(default_factory=list)
+    _value: Optional[Any] = dataclasses.field(init=False, repr=False, default=None)
+
+    def __post_init__(self):
+        if self.use_relation is None:
+            if self.relation is None:
+                self.use_relation = False
+            else:
+                self.use_relation = True
 
     def __add__(self, other):
         return self.value + other
@@ -167,7 +178,7 @@ class Setting:
         """
         Returns True if relation is not None and use_relation is True.
         """
-        return self.relation is not None and self.use_relation
+        return self.relation is not None and bool(self.use_relation)
 
     @property  # type: ignore[no-redef]
     def relation(self) -> "Relation" | None:
@@ -185,7 +196,8 @@ class Setting:
             value = Equation(equation=value)  # type: ignore[call-arg]
         self._relation = value
         if value is not None:
-            self.use_relation = True
+            if self.use_relation is not None:
+                self.use_relation = True
 
     @property  # type: ignore[no-redef]
     def value(self) -> Any:
@@ -225,11 +237,14 @@ class Setting:
             value:
                 A sequence of settings, settings names or a single setting used to initialize
                 the dimensions list.
+
         Raises:
             TypeError if wrong datatype is used to initialize the setting.
         """
         if isinstance(value, property):
-            value = []
+            return
+            # value = []
+
         new_dimension_list: list[str] = []
         sequence_of_dimensions: Sequence[str | Setting]
         if isinstance(value, str):
@@ -271,9 +286,14 @@ class Settings:
     The setting values can be accessed as ``settings['a']`` or ``settings.a``.
     The Setting objects can contain relations, which need to be resolved before
     their values can be accessed. This can be done as ``settings.resolve_relations()``.
+
+    Note that settings cannot use the names of methods in :class:`Settings`.
     """
 
     _fields: dict[str, Setting] = dataclasses.field(default_factory=dict)
+    _many_to_many_relations: list[ManyToManyRelation] = dataclasses.field(
+        default_factory=list, repr=False, init=False
+    )
 
     def __str__(self) -> str:
         return self._to_string()
@@ -332,6 +352,21 @@ class Settings:
                 self._fields[setting.name] = setting
                 super().__setattr__(name, setting)
 
+    def __getattr__(self, name):
+        """
+        If the target setting is not found, creates a new setting.
+
+        At the moment, disabled. Works, but supports too error-prone programming.
+
+        Args:
+            name: Name of the Setting that is searched.
+        """
+        raise AttributeError(f'Trying to get setting "{name}" which was not found.')
+        # if name.startswith('_'):
+        #     raise AttributeError()
+        # self.__setattr__(name, None)
+        # return self[name]
+
     def to_dict(self) -> dict[str, Any]:
         """Name-value pair representation of the object
 
@@ -352,7 +387,18 @@ class Settings:
     def __getitem__(self, key: str):
         return self._fields[key]
 
-    # def resolve_relations(self) -> Self: #  Needs python 3.11
+    def __setitem__(self, key: str, value: Any | Setting):
+        setattr(self, key, value)
+
+    def add_many_to_many_relation(self, relation: ManyToManyRelation):
+        """
+        Adds a many-to-many relation to the settings.
+
+        Args:
+            relation: Many-to-many relation to be added.
+        """
+        self._many_to_many_relations.append(relation)
+
     def resolve_relations(self) -> list[str]:
         """
         Resolves all the relations in the settings hierarchy.
@@ -365,7 +411,9 @@ class Settings:
             have relations.
         """
         # Build relation hierarchy
+        many_to_many_relation_map = self.get_many_to_many_relation_map()
         relation_graph = self.get_relation_hierarchy()
+        evaluated_many_to_many_relations = set()
         nodes_with_relation = []
         if not is_acyclic(relation_graph):
             raise ValueError("Cyclic relations detected.")
@@ -373,16 +421,41 @@ class Settings:
         nodes = list(nx.topological_sort(relation_graph))
         for node in nodes:
             setting = self[node]
-            if setting.has_active_relation():
+            if setting.has_active_relation() and not isinstance(
+                setting.relation, EvaluatedManyToManyRelation
+            ):
                 setting.relation.resolve(self)
                 nodes_with_relation.append(node)
+            elif setting.name in many_to_many_relation_map:
+                relation = many_to_many_relation_map[setting.name]
+                if relation not in evaluated_many_to_many_relations:
+                    relation.resolve(self)
+                    for (
+                        output_setting_name,
+                        function_argument_name_or_index,
+                    ) in relation.output_parameters.items():
+                        dummy_relation = EvaluatedManyToManyRelation(
+                            parameters={}, source=str(relation)
+                        )
+                        if relation.evaluated_value is not None:
+                            dummy_relation.evaluated_value = relation.evaluated_value[
+                                function_argument_name_or_index
+                            ]
+                        else:
+                            dummy_relation.evaluated_value = None
+                        self[output_setting_name].relation = dummy_relation
+                        nodes_with_relation.append(output_setting_name)
+                    evaluated_many_to_many_relations.add(relation)
+
         dimensions = set()
         for setting in self:
             if setting.dimensions:
                 dimensions.update(setting.dimensions)
-        if dimensions & set(nodes_with_relation):
+        intersection = dimensions & set(nodes_with_relation)
+        if intersection:
             raise ValueError(
-                "Settings that are used as dimensions cannot have relations."
+                "Settings that are used as dimensions cannot have relations. "
+                + f"These are the settings {list(intersection)}."
             )
         return nodes_with_relation
 
@@ -404,8 +477,52 @@ class Settings:
                 if dependent_setting not in relation_graph:
                     relation_graph.add_node(dependent_setting)
                 if dependent_setting != setting.name:
-                    relation_graph.add_edge(dependent_setting, setting.name)
+                    relation_graph.add_edge(
+                        dependent_setting, setting.name, name=str(relation)
+                    )
+        for relation in self._many_to_many_relations:
+            dependent_settings = relation.get_mapped_setting_names()
+            for dependent_setting in dependent_settings:
+                if dependent_setting not in relation_graph:
+                    relation_graph.add_node(dependent_setting)
+                for output_setting in relation.get_mapped_output_setting_names():
+                    if output_setting not in relation_graph:
+                        relation_graph.add_node(output_setting)
+                    elif self[output_setting].has_active_relation() and not isinstance(
+                        self[output_setting].relation, EvaluatedManyToManyRelation
+                    ):
+                        raise ValueError(
+                            f'Output "{output_setting}" of a many-to-many relation "{relation}"'
+                            + f' overlaps with an existing relation "{self[output_setting].relation}".'
+                        )
+                    relation_graph.add_edge(
+                        dependent_setting, output_setting, name=(relation)
+                    )
         return relation_graph
+
+    def get_many_to_many_relation_map(self) -> dict[str, ManyToManyRelation]:
+        """
+        Returns a mapping from setting names to linked many-to-many relations.
+        """
+        many_to_many_relation_map = {}
+        for relation in self._many_to_many_relations:
+            output_parameters = relation.get_mapped_output_setting_names()
+            for output_parameter in output_parameters:
+                many_to_many_relation_map[output_parameter] = relation
+        return many_to_many_relation_map
+
+    def draw_relation_hierarchy(self):
+        """
+        Draws the current relation hierarchy.
+        """
+        relation_graph = self.get_relation_hierarchy()
+        pos = _hierarchical_layout(relation_graph, orientation="v")
+        # pos=nx.spring_layout(relation_graph)
+        nx.draw(relation_graph, pos, with_labels=True)
+        labels = {node: node for node in relation_graph.nodes}
+        edge_labels = nx.get_edge_attributes(relation_graph, "name")
+        nx.draw_networkx_labels(relation_graph, pos, labels, font_size=12)
+        nx.draw_networkx_edge_labels(relation_graph, pos, edge_labels=edge_labels)
 
     def get_dependent_setting_names(
         self, setting: Setting, relation_hierarchy: Optional[nx.DiGraph] = None
@@ -433,10 +550,16 @@ class Settings:
 
         Indidivual Setting objects are copied but their values are not.
         """
-        settings = Settings()
+        new_settings = Settings()
         for setting in self:
-            setattr(settings, setting.name, dataclasses.replace(setting))
-        return settings
+            setattr(new_settings, setting.name, dataclasses.replace(setting))
+            # There is a weird functionality in dataclasses with init=False, which prevents
+            # dimensions from being copied.
+            new_settings[setting.name].dimensions = copy.copy(setting.dimensions)
+            new_settings[setting.name].use_relation = setting.use_relation
+        for relation in self._many_to_many_relations:
+            new_settings.add_many_to_many_relation(dataclasses.replace(relation))
+        return new_settings
 
 
 def is_acyclic(graph: nx.DiGraph) -> bool:
@@ -453,6 +576,56 @@ def is_acyclic(graph: nx.DiGraph) -> bool:
         return False
     return True
 
+
+def _hierarchical_layout(
+    graph: nx.DiGraph[str],
+    dx: Optional[float] = None,
+    dy: Optional[float] = None,
+    orientation: str = "h",
+) -> dict[str, tuple[float, float]]:
+    """
+    Layout for plotting DiGraph by generations.
+
+    Partial credits to chatGPT which provided a completely incorrect solution.
+
+    Args:
+        graph: Graph for which the node positions are calculated.
+        dx: Space between the nodes in the same generation.
+        dy: Space between the nodes in different genrations.
+        orientation: If 'h', the same generation is horizontal, otherwise vertical.
+
+    Returns:
+        A dict which keys are the nodes and the values are the coordinates for the nodes.
+    """
+    pos = {}
+    nbr_y = 0
+    nbr_x = 0
+    for generation in nx.topological_generations(graph):
+        nbr_y = nbr_y + 1
+        nbr_x = max(nbr_x, len(generation))
+    if dx is None:
+        dx = 1 / (nbr_x + 1)
+    if dy is None:
+        dy = 1 / (nbr_y + 1)
+
+    # Need to call again because the result is a generator.
+    y_coord = dy
+    for generation in nx.topological_generations(graph):
+        x_coord = dx
+        y_coord = y_coord + dy
+        for node in generation:
+            if orientation.lower() == "h":
+                pos[node] = (x_coord, y_coord)
+            else:
+                pos[node] = (y_coord, x_coord)
+            x_coord = x_coord + dx
+    return pos
+
+
+from .many_to_many_relation import (  # pylint: disable=wrong-import-position
+    EvaluatedManyToManyRelation,
+    ManyToManyRelation,
+)
 
 # Avoid cyclic import
 from .relation import Equation, Relation  # pylint: disable=wrong-import-position
