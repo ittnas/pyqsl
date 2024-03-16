@@ -359,13 +359,13 @@ def _get_settings_for_resolve_in_loop(
     """
     current_ind = np.unravel_index(ii, dims)
     current_sweeps = [
-        setting_name for setting_name in needed_setting_names if setting_name in sweeps
+        setting_name for setting_name in sweeps if setting_name in needed_setting_names
     ]
     setting_values = {}
     for setting_name in mapped_setting_names:
         if setting_name in sweeps:
             # Get the setting value from the sweep
-
+            
             sweep_ind = int(current_ind[current_sweeps.index(setting_name)])
             setting_values[setting_name] = sweeps[setting_name][sweep_ind]
         if setting_name in setting_value_dict:

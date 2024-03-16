@@ -33,7 +33,7 @@ settings.p0.dimensions = ["tlist"]
 settings.p1 = None
 settings.p1.dimensions = ["tlist"]
 
-sweep_arrays = {"dw": np.linspace(-10e6, 10e6, 51)}
+sweep_arrays = {"dw": np.linspace(-10e6, 10e6, 101)}
 
 
 def pre_processing_before_loop(settings):

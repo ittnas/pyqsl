@@ -16,14 +16,10 @@ def height(x, y):
 
 
 settings = pyqsl.Settings()
-settings.x = 0
-settings.x.unit = "m"
-settings.y = 0
-settings.y.unit = "m"
-settings.z = 0
-settings.z.unit = "m"
-settings.aux = 0
-settings.aux.unit = "m"
+settings.x = pyqsl.Setting(value=0.0, unit="m")
+settings.y = pyqsl.Setting(value=0.0, unit="m")
+settings.z = pyqsl.Setting(value=0.0, unit="m")
+settings.aux = pyqsl.Setting(value=0.0, unit="m")
 # Instead of sweeping in a rectangle for x and y, we want to sweep around the minimum of the target funtion.
 # Construct a relation that sweeps y around a cosine function of x.
 
