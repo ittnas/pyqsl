@@ -430,3 +430,14 @@ def test_sweeping_setting_with_relations():
     result = pyqsl.run(None, settings=settings, sweeps={"b": [0, 2, 3]})
     assert list(result.b) == [0, 2, 3]
     assert list(result.c) == [0, 2, 3]
+
+
+def test_sweeping_different_order():
+    settings = pyqsl.Settings()
+    settings.a = 1
+    settings.b = 2
+    settings.c = pyqsl.Setting(relation="a + b")
+    result = pyqsl.run(None, settings=settings, sweeps={"b": [0, 1, 2], "a": [0.5, 1.0]})
+    assert result.c.shape == (3, 2)
+    result = pyqsl.run(None, settings=settings, sweeps={"a": [0.5, 1.0], "b": [0, 1, 2]})
+    assert result.c.shape == (2, 3)

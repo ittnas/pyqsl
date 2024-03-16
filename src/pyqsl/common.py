@@ -365,7 +365,7 @@ def _get_settings_for_resolve_in_loop(
     for setting_name in mapped_setting_names:
         if setting_name in sweeps:
             # Get the setting value from the sweep
-            
+
             sweep_ind = int(current_ind[current_sweeps.index(setting_name)])
             setting_values[setting_name] = sweeps[setting_name][sweep_ind]
         if setting_name in setting_value_dict:
