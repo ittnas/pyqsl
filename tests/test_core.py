@@ -1,8 +1,8 @@
 from typing import Any
 
 import numpy as np
-from pluggy import _result
 import pytest
+from pluggy import _result
 
 import pyqsl
 
@@ -437,7 +437,22 @@ def test_sweeping_different_order():
     settings.a = 1
     settings.b = 2
     settings.c = pyqsl.Setting(relation="a + b")
-    result = pyqsl.run(None, settings=settings, sweeps={"b": [0, 1, 2], "a": [0.5, 1.0]})
+    result = pyqsl.run(
+        None, settings=settings, sweeps={"b": [0, 1, 2], "a": [0.5, 1.0]}
+    )
     assert result.c.shape == (3, 2)
-    result = pyqsl.run(None, settings=settings, sweeps={"a": [0.5, 1.0], "b": [0, 1, 2]})
+    result = pyqsl.run(
+        None, settings=settings, sweeps={"a": [0.5, 1.0], "b": [0, 1, 2]}
+    )
     assert result.c.shape == (2, 3)
+
+
+def test_return_different_types():
+    def task(a):
+        return {"b": 1 + a, "c": [2 + a]}
+
+    settings = pyqsl.Settings()
+    settings.a = 0.1
+    result = pyqsl.run(task, settings=settings, sweeps={"a": [0.0, 1.0, 2.0]})
+    assert type(result.dataset.b.values.dtype) == np.dtypes.Float64DType
+    assert type(result.dataset.c.values.dtype) == np.dtypes.ObjectDType

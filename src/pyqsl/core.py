@@ -432,7 +432,6 @@ def _create_dataset(
     reshaped_array = np.reshape(np.array(output_array, dtype=object), dims)
     # Expand
     reshaped_array_expanded = _expand_dict_from_data(reshaped_array)
-
     dataset: xr.Dataset
     data_vars: dict[str, tuple[tuple[str, ...], Any, dict]] = {}
     extended_coords: dict[str, Any] = {
@@ -528,9 +527,12 @@ def _create_dataset(
         data_vars_converted = {}
         for data_var, entry in data_vars.items():
             try:
+                dims_for_data_var = tuple(len(extended_coords[dim]) for dim in entry[0])
                 data_vars_converted[data_var] = (
                     entry[0],
-                    vstack_and_reshape(entry[1]),
+                    create_numpy_array_with_fixed_dimensions(
+                        vstack_and_reshape(entry[1]), dims_for_data_var
+                    ),
                     entry[2],
                 )
             except:  # pylint: disable=bare-except

@@ -27,8 +27,7 @@ dependencies = [
 "pint-xarray",
 ]
 
-#dynamic = ["version"]
-version = "3.0"
+version = "3.1"
 
 [project.optional-dependencies]
 testing = [
@@ -47,7 +46,7 @@ examples = [
 
 [project.urls]
 url = 'https://github.com/ittnas/pyqsl'
-download_url = 'https://github.com/ittnas/pyqsl/archive/2.0.tar.gz'
+download_url = 'https://github.com/ittnas/pyqsl/archive/3.0.tar.gz'
 
 [tool.isort]
 profile = "black"

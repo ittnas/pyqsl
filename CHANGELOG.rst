@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 3.1 (2024-03-21)
+------------------------
+
+Bug Fixes
+---------
+  - Fix a bug where all data_vars for a task returning dicts
+    were converted to objects if any of them needed to be converted.
+
 Version 3.0 (2024-03-16)
 --------------------------
 
