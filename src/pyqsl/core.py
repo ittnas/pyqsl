@@ -34,116 +34,6 @@ from pyqsl.simulation_result import SimulationResult
 logger = logging.getLogger(__name__)
 
 
-def _simulation_loop_body(
-    setting_value_dict: dict[str, Any],
-    settings: Settings,
-    sweeps: SweepsStandardType,
-    pre_process_in_loop: Callable | None,
-    post_processs_in_loop: Callable | None,
-    task: Callable | None | list[Callable],
-) -> dict[str, Any]:
-    """
-    This function is responsible for all the actions that happen for each point in simulation.
-
-    Args:
-        setting_value_dict: Dict containing values for resolved settings
-        settings:
-            Settings for index ``ii`` in the simulation. At this point, the relations have not been resolved, yet.
-        sweeps: Sweeps for the simulation.
-        pre_process_in_loop: Callback to do processing before the task is called.
-        post_process_in_loop: Callback to do post-processing after the task is called.
-        task: The main task to run.
-
-    Returns:
-        The results in a dictionary.
-    """
-    # pylint: disable=too-many-branches
-
-    # Make sure that parallel threads don't simulteneously edit params.
-    # Only use params_private in the following.
-
-    original_settings = settings
-    settings = original_settings.copy()
-    for setting_name, setting_value in setting_value_dict.items():
-        # Get the setting value from previously evaluated setting
-
-        setattr(settings, setting_name, setting_value)
-
-    if pre_process_in_loop:
-        pre_process_in_loop(settings)
-
-    # Resolve relations
-
-    task = task or (lambda: {})  # pylint: disable=unnecessary-lambda-assignment
-    settings_dict = settings.to_dict()
-    if not isinstance(task, list):
-        task_list = [task]
-    else:
-        task_list = task
-
-    final_result = {}
-    for current_task in task_list:
-        invalid_args = _get_invalid_args(current_task, settings_dict)
-        logger.debug("Removing invalid args (%s) from function.", str(invalid_args))
-        valid_settings = {
-            key: settings_dict[key] for key in settings_dict if key not in invalid_args
-        }
-
-        # Call the task function. If "settings" is one of the arguments,
-        # substitute that with the settings object.
-
-        if _settings_in_args(current_task):
-            valid_settings["settings"] = settings
-        output = current_task(**valid_settings)
-
-        if post_processs_in_loop:
-            output = post_processs_in_loop(output, settings)
-
-        # If any setting has been changed, add as a result.
-
-        if isinstance(output, Settings):
-            new_output = {}
-            for setting in output:
-                name = setting.name
-                if name is None:
-                    continue
-                if name in sweeps:
-                    continue
-                if setting not in original_settings:
-                    new_output[name] = setting.value
-                    continue
-                comparison = False
-                try:
-                    # Comparison for normal setting values.
-
-                    comparison = setting.value != original_settings[name].value
-                    if (
-                        comparison
-                    ):  # This is necessary to catch results that cannot be compared.
-                        pass
-                except Exception:  # pylint: disable=broad-exception-caught
-                    try:
-                        # Comparison for array-like setting values.
-                        comparison = (
-                            setting.value != original_settings[name].value
-                        ).any()
-                    except Exception:  # pylint: disable=broad-exception-caught
-                        pass
-                    if comparison:
-                        new_output[name] = setting.value
-            output = new_output
-        if isinstance(output, dict):
-            final_result.update(output)
-        else:
-            final_result = output
-
-    output_as_dict = {
-        "output": final_result,
-        "settings_with_relations": {},  # TODO: REMOVE THIS
-    }
-    return output_as_dict
-
-
 def run(
     task: None | Callable[..., TaskOutputType],
     settings: Optional[Settings] = None,
@@ -157,6 +47,7 @@ def run(
     expand_data: bool = True,
     n_cores: Optional[int] = None,
     jupyter_compatibility_mode: bool = False,
+    use_shallow_copy: bool = False,
 ) -> SimulationResult:
     """
     Runs the simulation for a given task.
@@ -236,6 +127,10 @@ def run(
             multiprocessing, which requires the task to be saved to a file. When using this mode, the task
             function needs to be written in a very specific way. For example, all the imports needed
             by the function need to be done within the function definition.
+        use_shallow_copy:
+            If True, only a shallow copies of Settings are made. Setting to True might provide a small
+            improvement in performance if Settings contains large amounts of data. However, the user
+            must ensure that the task does not modify the objects in Settings during the execution.
 
     Returns:
         :class:`~.SimulationResult` that contains the resulting data and a copy of the settings.
@@ -287,7 +182,10 @@ def run(
     start_time = datetime.datetime.now()
     logger.info("Simulation started at %s", str(start_time))
     settings = settings or Settings()
-    settings = copy.deepcopy(settings)
+    if use_shallow_copy:
+        settings = settings.copy()
+    else:
+        settings = copy.deepcopy(settings)
     sweeps_std_form = {} if sweeps is None else convert_sweeps_to_standard_form(sweeps)
     dims = [len(sweep_values) for sweep_values in sweeps_std_form.values()]
 
@@ -380,6 +278,7 @@ def run(
             pre_process_in_loop=pre_process_in_loop,
             post_processs_in_loop=post_process_in_loop,
             task=simulation_task,
+            use_shallow_copy=use_shallow_copy,
         )
         output_array = list(
             tqdm.tqdm(
@@ -410,6 +309,122 @@ def run(
     )
     simulation_result = SimulationResult(dataset)
     return simulation_result
+
+
+def _simulation_loop_body(
+    setting_value_dict: dict[str, Any],
+    settings: Settings,
+    sweeps: SweepsStandardType,
+    pre_process_in_loop: Callable | None,
+    post_processs_in_loop: Callable | None,
+    task: Callable | None | list[Callable],
+    use_shallow_copy: bool,
+) -> dict[str, Any]:
+    """
+    This function is responsible for all the actions that happen for each point in simulation.
+
+    Args:
+        setting_value_dict: Dict containing values for resolved settings
+        settings:
+            Settings for index ``ii`` in the simulation. At this point, the relations have not been resolved, yet.
+        sweeps: Sweeps for the simulation.
+        pre_process_in_loop: Callback to do processing before the task is called.
+        post_process_in_loop: Callback to do post-processing after the task is called.
+        task: The main task to run.
+        use_shallow_copy: If True, only a shallow copy of the Settings is made.
+
+    Returns:
+        The results in a dictionary.
+    """
+    # pylint: disable=too-many-branches
+
+    # Make sure that parallel threads don't simulteneously edit params.
+    # Only use params_private in the following.
+
+    original_settings = settings
+    #settings = original_settings.copy()
+    if use_shallow_copy:
+        settings = original_settings.copy()
+    else:
+        settings = copy.deepcopy(original_settings)
+    for setting_name, setting_value in setting_value_dict.items():
+        # Get the setting value from previously evaluated setting
+
+        setattr(settings, setting_name, setting_value)
+
+    if pre_process_in_loop:
+        pre_process_in_loop(settings)
+
+    # Resolve relations
+
+    task = task or (lambda: {})  # pylint: disable=unnecessary-lambda-assignment
+    settings_dict = settings.to_dict()
+    if not isinstance(task, list):
+        task_list = [task]
+    else:
+        task_list = task
+
+    final_result = {}
+    for current_task in task_list:
+        invalid_args = _get_invalid_args(current_task, settings_dict)
+        logger.debug("Removing invalid args (%s) from function.", str(invalid_args))
+        valid_settings = {
+            key: settings_dict[key] for key in settings_dict if key not in invalid_args
+        }
+
+        # Call the task function. If "settings" is one of the arguments,
+        # substitute that with the settings object.
+
+        if _settings_in_args(current_task):
+            valid_settings["settings"] = settings
+        output = current_task(**valid_settings)
+
+        if post_processs_in_loop:
+            output = post_processs_in_loop(output, settings)
+
+        # If any setting has been changed, add as a result.
+
+        if isinstance(output, Settings):
+            new_output = {}
+            for setting in output:
+                name = setting.name
+                if name is None:
+                    continue
+                if name in sweeps:
+                    continue
+                if setting not in original_settings:
+                    new_output[name] = setting.value
+                    continue
+                comparison = False
+                try:
+                    # Comparison for normal setting values.
+
+                    comparison = setting.value != original_settings[name].value
+                    if (
+                        comparison
+                    ):  # This is necessary to catch results that cannot be compared.
+                        pass
+                except Exception:  # pylint: disable=broad-exception-caught
+                    try:
+                        # Comparison for array-like setting values.
+                        comparison = (
+                            setting.value != original_settings[name].value
+                        ).any()
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        pass
+                    if comparison:
+                        new_output[name] = setting.value
+            output = new_output
+        if isinstance(output, dict):
+            final_result.update(output)
+        else:
+            final_result = output
+
+    output_as_dict = {
+        "output": final_result,
+        "settings_with_relations": {},  # TODO: REMOVE THIS
+    }
+    return output_as_dict
 
 
 def _create_dataset(
@@ -523,31 +538,37 @@ def _create_dataset(
     # Try convert data that has numpy object type to any natural datatype.
     # If conversion cannot be done, retain in original form.
 
-    try:
-        data_vars_converted = {}
-        for data_var, entry in data_vars.items():
-            try:
-                dims_for_data_var = tuple(len(extended_coords[dim]) for dim in entry[0])
-                data_vars_converted[data_var] = (
-                    entry[0],
-                    create_numpy_array_with_fixed_dimensions(
-                        vstack_and_reshape(entry[1]), dims_for_data_var
-                    ),
-                    entry[2],
-                )
-            except:  # pylint: disable=bare-except
-                data_vars_converted[data_var] = data_vars[data_var]
-        dataset = xr.Dataset(
-            data_vars=data_vars_converted,
-            coords=extended_coords,
-            attrs={"settings": settings},
+    data_vars_converted = {}
+    for data_var, entry in data_vars.items():
+        try:
+            dims_for_data_var = tuple(len(extended_coords[dim]) for dim in entry[0])
+            data_vars_converted[data_var] = (
+                entry[0],
+                create_numpy_array_with_fixed_dimensions(
+                    vstack_and_reshape(entry[1]), dims_for_data_var
+                ),
+                entry[2],
+            )
+        except:  # pylint: disable=bare-except
+            data_vars_converted[data_var] = data_vars[data_var]
+    dataset = xr.Dataset(
+        coords=extended_coords, attrs={"settings": settings}
         )
-    except:  # pylint: disable=bare-except
-        dataset = xr.Dataset(
-            data_vars=data_vars,
-            coords=extended_coords,
-            attrs={"settings": settings},
-        )
+    for data_var, entry in data_vars_converted.items():
+        try:
+            data_array = xr.DataArray(
+                dims=entry[0], data=entry[1], attrs=entry[2]
+            )
+            dataset[data_var] = data_array
+        except:
+            logger.warning('Unable to convert data_var %s when creating dataset.', data_var)
+            dv_in_object_form = data_vars[data_var]
+            print(dv_in_object_form)
+            data_array = xr.DataArray(
+                dims=dv_in_object_form[0], data=dv_in_object_form[1], attrs=dv_in_object_form[2],
+            )
+            dataset[data_var] = data_array
+
     dataset = dataset.pint.quantify()
     return dataset
 

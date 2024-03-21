@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Version 3.2 (2024-03-21)
+------------------------
+
+Features
+--------
+  - Add a new option to run, use_shallow_copy to enable the use of
+     shallow copies instead of deep copies.
+
+Bug Fixes
+---------
+  - When creating dataset, data vars are converted one by one to
+    prevent casting all of them if a single conversion results in
+    exception.
+
 Version 3.1 (2024-03-21)
 ------------------------
 

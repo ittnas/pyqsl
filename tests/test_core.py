@@ -327,7 +327,7 @@ def test_settings_with_reserved_names():
     settings = pyqsl.Settings()
     settings.copy = 0
     with pytest.raises(TypeError):
-        result = pyqsl.run(task, settings)
+        result = pyqsl.run(task, settings, use_shallow_copy=True)
 
 
 def test_dimensions_with_relations():
@@ -456,3 +456,15 @@ def test_return_different_types():
     result = pyqsl.run(task, settings=settings, sweeps={"a": [0.0, 1.0, 2.0]})
     assert type(result.dataset.b.values.dtype) == np.dtypes.Float64DType
     assert type(result.dataset.c.values.dtype) == np.dtypes.ObjectDType
+
+
+def test_that_settings_are_not_shared():
+    def task(a, list_index):
+        a[list_index]=1
+        return a
+    settings=pyqsl.Settings()
+    settings.a = [0, 0, 0, 0]
+    settings.list_index = 0
+    result = pyqsl.run(task, settings=settings, sweeps={'list_index': [0, 1, 2, 3]})
+    assert list(result.data[0]) == [1, 0, 0, 0]
+    assert settings.a.value == [0, 0, 0, 0]
