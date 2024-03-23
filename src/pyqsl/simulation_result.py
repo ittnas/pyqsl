@@ -31,6 +31,33 @@ class SimulationResult:
     in which case the only setting values are returned and broadcasted to sweep dimensions.
 
     Another option is to access ``simulation_result.settings.amplitude``, which returns the setting object.
+
+    The ``get``-method can be used to access multiple attributes at the same time. All the attributes are
+    expanded so that they have the same shape. This can be particularly handy when plotting or
+    analyzing multi-dimensional data. ``get`` also supports ordering by dimension names, which ensures that the
+    leading dimensions of all the requested attributes are in the given order.
+
+    Examples:
+        .. code-block:: python
+            import pyqsl
+            import numpy as np
+
+            def simulation_task(a:int , b:float) -> float:
+                return {'c': a + b}
+
+            settings = pyqsl.Settings()
+            settings.a = 1
+            settings.b = 2
+            result = pyqsl.run(simulation_task, settings, sweeps={'a': np.linspace(0, 1, 101)})
+            a, c = result.get(('a', 'c'), order=('b', 'a'))
+            print(f"shapes: a={a.shape}, c={c.shape}")
+
+            >>> shapes: a=(1, 101), c=(1, 101)
+
+            b, c = result['b', 'c']
+            print(f"shapes: b={b.shape}, c={c.shape}")
+
+            >>> shapes: b=(101,), c=(101,)
     """
 
     dataset: xr.Dataset
@@ -105,6 +132,9 @@ class SimulationResult:
     def __repr__(self) -> str:
         return repr(self.dataset)
 
+    def __getitem__(self, key):
+        return self.get(key)
+
     def save(self, path: str):
         """
         Saves the simulation result to a pickle file.
@@ -151,8 +181,9 @@ class SimulationResult:
                 all_dimension_names.update(
                     {dim: None for dim in self.dataset.data_vars[key_element].dims}  # type: ignore[misc]
                 )
+            elif key_element in self.dataset.coords:
+                all_dimension_names.update({key_element: None})
         all_dimension_names_list = list(all_dimension_names.keys())
-        logger.debug(all_dimension_names_list)
         for key_element in key:
             data.append(
                 vstack_and_reshape(
@@ -186,10 +217,7 @@ class SimulationResult:
             slice(None) if dim in current_dimension_names else np.newaxis
             for dim in all_dimension_names_in_old_order
         )
-        logger.debug(slice_tuple)
         data = np.array(getattr(self, key))
-        logger.debug(key)
-        logger.debug(data)
         data = data[slice_tuple]
         transpose_list = []
         for order_name in order_names:
@@ -204,8 +232,6 @@ class SimulationResult:
             len(self.dataset.coords[dim]) if dim in self.dataset.coords else 1
             for dim in order
         ]
-        logger.debug(transpose_list)
-        logger.debug(data)
         data = np.transpose(data, tuple(transpose_list))
         data = np.broadcast_to(data, dims)
         return data

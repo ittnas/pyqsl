@@ -105,3 +105,24 @@ def test_to_settings():
     settings.e.dimensions = ["c"]
     new_settings = pyqsl.run(new_task, settings=settings).to_settings()
     assert new_settings.e.dimensions == ["c"]
+
+
+def test_getitem():
+    settings = pyqsl.Settings()
+    settings.a = 1
+    settings.b = 2
+    settings.c = 2
+
+    def task(a, b, c):
+        settings = pyqsl.Settings()
+        settings.d = np.mean(a) + np.mean(b) + c
+        return settings
+
+    result = pyqsl.run(task, settings=settings, sweeps={"a": [0, 1, 2]})
+    assert result["d"].shape == (3,)
+    c, a = result["d", "a"]
+    assert c.shape == (3,)
+    assert a.shape == (3,)
+    a, b = result["a", "b"]
+    assert a.shape == (3,)
+    assert b.shape == (3,)

@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Version 3.3 (2024-03-23)
+------------------------
+
+Features
+--------
+  - SimulationResult now supports indexing.
+  - New settings created by tasks are now part of settings
+    saved with SimulationResult.
+
+Bug Fixes
+---------
+  - Fix a bug where getting only sweeps from simulation result
+    gave broadcast error.
+
 Version 3.2 (2024-03-21)
 ------------------------
 

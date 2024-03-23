@@ -120,7 +120,7 @@ def run(
         expand_data:
             Flag indicating whether the first level of variables should be expanded.
         n_cores:
-            Number of cores to use in parallel processing. If None, all the available cores are used (``N_max``).
+                Number of cores to use in parallel processing. If None, all the available cores are used (``N_max``).
             For negative numbers, ``N_max + n_cores`` is used.
         jupyter_compatibility_mode:
             If running in jupyter on windows, this needs to be set to True. This is due to a weird behaviour in
@@ -158,6 +158,9 @@ def run(
             def simulation_task(a:int , b:float) -> float:
                 return {'c': a + b}
 
+            settings = pyqsl.Settings()
+            settings.a = 1
+            settings.b = 2
             result = pyqsl.run(simulation_task, settings)
             print(result.c)
 
@@ -171,6 +174,9 @@ def run(
             def simulation_task(a:int , b:float) -> float:
                 return {'c': a + b}
 
+            settings = pyqsl.Settings()
+            settings.a = 1
+            settings.b = 2
             result = pyqsl.run(simulation_task, settings, sweeps={'a': np.linspace(0, 1, 101)})
             print(result.c.shape)
 
@@ -344,7 +350,6 @@ def _simulation_loop_body(
     # Only use params_private in the following.
 
     original_settings = settings
-    # settings = original_settings.copy()
     if use_shallow_copy:
         settings = original_settings.copy()
     else:
@@ -367,6 +372,7 @@ def _simulation_loop_body(
         task_list = task
 
     final_result = {}
+    new_settings = {}
     for current_task in task_list:
         invalid_args = _get_invalid_args(current_task, settings_dict)
         logger.debug("Removing invalid args (%s) from function.", str(invalid_args))
@@ -385,7 +391,6 @@ def _simulation_loop_body(
             output = post_processs_in_loop(output, settings)
 
         # If any setting has been changed, add as a result.
-
         if isinstance(output, Settings):
             new_output = {}
             for setting in output:
@@ -396,6 +401,7 @@ def _simulation_loop_body(
                     continue
                 if setting not in original_settings:
                     new_output[name] = setting.value
+                    new_settings[name] = setting
                     continue
                 comparison = False
                 try:
@@ -425,6 +431,7 @@ def _simulation_loop_body(
     output_as_dict = {
         "output": final_result,
         "settings_with_relations": {},  # TODO: REMOVE THIS
+        "new_settings": new_settings,
     }
     return output_as_dict
 
@@ -457,6 +464,12 @@ def _create_dataset(
         )
         for ii, sweep in enumerate(sweeps)
     }
+
+    # Add all new settings created by the task as a setting in the dataset.
+
+    new_settings_dict = reshaped_array_expanded["new_settings"].flat[0]
+    for setting_name, setting in new_settings_dict.items():
+        settings[setting_name] = setting
 
     # Add settings as variables
 

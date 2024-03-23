@@ -484,3 +484,17 @@ def test_that_list_style_settings_are_not_unnecessarily_converted_to_objects():
 
     settings.d = pyqsl.Setting(relation=pyqsl.Function(function=func))
     pyqsl.run(None, settings=settings, sweeps={"e": np.linspace(0, 1, 3)})
+
+
+def test_task_that_adds_new_setting():
+    def simulation_task(a: int, b: float) -> pyqsl.Settings:
+        settings = pyqsl.Settings()
+        settings.c = pyqsl.Setting(value=a + b, unit="kg")
+        return settings
+
+    settings = pyqsl.Settings()
+    settings.a = pyqsl.Setting(value=1, unit="V")
+    settings.b = pyqsl.Setting(value=1, unit="Hz")
+    result = pyqsl.run(simulation_task, settings, sweeps={"a": np.linspace(0, 1, 3)})
+    assert result.dataset.settings.c.unit == "kg"
+    assert "c" not in settings

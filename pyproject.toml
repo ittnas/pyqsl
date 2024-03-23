@@ -27,7 +27,7 @@ dependencies = [
 "pint-xarray",
 ]
 
-version = "3.2"
+version = "3.3"
 
 [project.optional-dependencies]
 testing = [
