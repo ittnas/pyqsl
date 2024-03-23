@@ -378,6 +378,10 @@ def _get_settings_for_resolve_in_loop(
                 if sweep_name in setting_name_dims
             )
             setting_value = setting_value_dict[setting_name][list_descriptor]
+            if isinstance(setting_value, np.ndarray):
+                # Convert numpy arrays that have been cast to objects back to their
+                # standard type.
+                setting_value = vstack_and_reshape(setting_value)
             setting_values[setting_name] = setting_value
     return setting_values
 

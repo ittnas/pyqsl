@@ -14,6 +14,8 @@ Bug Fixes
   - When creating dataset, data vars are converted one by one to
     prevent casting all of them if a single conversion results in
     exception.
+  - Fix an issue where setting resolution with sweeps converted array-
+    like setting values to object arrays.
 
 Version 3.1 (2024-03-21)
 ------------------------

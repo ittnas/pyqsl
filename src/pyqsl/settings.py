@@ -575,7 +575,7 @@ class Settings:
         ancestors = nx.ancestors(relation_hierarchy, setting.name)
         return sorted(ancestors)
 
-    def copy(self):
+    def copy(self) -> Settings:
         """
         Creates a copy of self.
 

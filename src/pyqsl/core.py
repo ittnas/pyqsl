@@ -186,6 +186,7 @@ def run(
         settings = settings.copy()
     else:
         settings = copy.deepcopy(settings)
+
     sweeps_std_form = {} if sweeps is None else convert_sweeps_to_standard_form(sweeps)
     dims = [len(sweep_values) for sweep_values in sweeps_std_form.values()]
 
@@ -223,12 +224,13 @@ def run(
     if parallelize:
         cores = psutil.Process().cpu_affinity()
         max_nbr_cores = len(cores) if cores else 1
-        if n_cores is None:
-            used_cores = max_nbr_cores
-        elif n_cores < 0:
-            used_cores = np.max([max_nbr_cores + n_cores, 1])
-        else:
-            used_cores = n_cores
+        used_cores = (
+            max_nbr_cores
+            if n_cores is None
+            else np.max([max_nbr_cores + n_cores, 1])
+            if n_cores < 0
+            else n_cores
+        )
         pool = mp.Pool(processes=used_cores)
         execution_settings = {"chunksize": calculate_chunksize(used_cores, N_tot)}
     else:
@@ -342,7 +344,7 @@ def _simulation_loop_body(
     # Only use params_private in the following.
 
     original_settings = settings
-    #settings = original_settings.copy()
+    # settings = original_settings.copy()
     if use_shallow_copy:
         settings = original_settings.copy()
     else:
@@ -551,21 +553,20 @@ def _create_dataset(
             )
         except:  # pylint: disable=bare-except
             data_vars_converted[data_var] = data_vars[data_var]
-    dataset = xr.Dataset(
-        coords=extended_coords, attrs={"settings": settings}
-        )
+    dataset = xr.Dataset(coords=extended_coords, attrs={"settings": settings})
     for data_var, entry in data_vars_converted.items():
         try:
-            data_array = xr.DataArray(
-                dims=entry[0], data=entry[1], attrs=entry[2]
-            )
+            data_array = xr.DataArray(dims=entry[0], data=entry[1], attrs=entry[2])
             dataset[data_var] = data_array
-        except:
-            logger.warning('Unable to convert data_var %s when creating dataset.', data_var)
+        except:  # pylint: disable=bare-except
+            logger.warning(
+                "Unable to convert data_var %s when creating dataset.", data_var
+            )
             dv_in_object_form = data_vars[data_var]
-            print(dv_in_object_form)
             data_array = xr.DataArray(
-                dims=dv_in_object_form[0], data=dv_in_object_form[1], attrs=dv_in_object_form[2],
+                dims=dv_in_object_form[0],
+                data=dv_in_object_form[1],
+                attrs=dv_in_object_form[2],
             )
             dataset[data_var] = data_array
 

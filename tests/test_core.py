@@ -460,11 +460,27 @@ def test_return_different_types():
 
 def test_that_settings_are_not_shared():
     def task(a, list_index):
-        a[list_index]=1
+        a[list_index] = 1
         return a
-    settings=pyqsl.Settings()
+
+    settings = pyqsl.Settings()
     settings.a = [0, 0, 0, 0]
     settings.list_index = 0
-    result = pyqsl.run(task, settings=settings, sweeps={'list_index': [0, 1, 2, 3]})
+    result = pyqsl.run(task, settings=settings, sweeps={"list_index": [0, 1, 2, 3]})
     assert list(result.data[0]) == [1, 0, 0, 0]
     assert settings.a.value == [0, 0, 0, 0]
+
+
+def test_that_list_style_settings_are_not_unnecessarily_converted_to_objects():
+    settings = pyqsl.Settings()
+    settings.a = np.linspace(0, 1, 5)
+    settings.b = pyqsl.Setting(value=np.linspace(0, 2, 5), dimensions=["a"])
+    settings.e = 2
+    settings.c = pyqsl.Setting(relation="b*e", dimensions=["a"])
+
+    def func(c):
+        assert type(c.dtype) == np.dtypes.Float64DType
+        return c
+
+    settings.d = pyqsl.Setting(relation=pyqsl.Function(function=func))
+    pyqsl.run(None, settings=settings, sweeps={"e": np.linspace(0, 1, 3)})
