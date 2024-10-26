@@ -48,6 +48,7 @@ def run(
     n_cores: Optional[int] = None,
     jupyter_compatibility_mode: bool = False,
     use_shallow_copy: bool = False,
+    disable_progress_bar: bool = False,
 ) -> SimulationResult:
     """
     Runs the simulation for a given task.
@@ -131,6 +132,8 @@ def run(
             If True, only a shallow copies of Settings are made. Setting to True might provide a small
             improvement in performance if Settings contains large amounts of data. However, the user
             must ensure that the task does not modify the objects in Settings during the execution.
+       disable_progress_bar:
+            If True, does not show the progress bar during execution.
 
     Returns:
         :class:`~.SimulationResult` that contains the resulting data and a copy of the settings.
@@ -251,6 +254,7 @@ def run(
             pool=pool,
             parallelize=parallelize,
             n_cores=used_cores,
+            disable_progress_bar=disable_progress_bar,
         )
         setting_names_for_tasks = list(resolved_settings_dataset.data_vars)
         for sweep_name in sweeps_std_form:
@@ -298,6 +302,7 @@ def run(
                 total=N_tot,
                 leave=True,
                 desc="Resolving tasks",
+                disable=disable_progress_bar,
             )
         )
 

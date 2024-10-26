@@ -528,7 +528,6 @@ class Settings:
         """
         relation_graph = self.get_relation_hierarchy()
         pos = _hierarchical_layout(relation_graph, orientation="v")
-        # pos=nx.spring_layout(relation_graph)
         nx.draw(relation_graph, pos, with_labels=True)
         labels = {node: node for node in relation_graph.nodes}
         edge_labels = nx.get_edge_attributes(relation_graph, "name")

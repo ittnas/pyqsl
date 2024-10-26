@@ -498,3 +498,11 @@ def test_task_that_adds_new_setting():
     result = pyqsl.run(simulation_task, settings, sweeps={"a": np.linspace(0, 1, 3)})
     assert result.dataset.settings.c.unit == "kg"
     assert "c" not in settings
+
+    
+def test_running_with_disable_progress_bar():
+    settings = pyqsl.Settings()
+    settings.a = 3
+    settings.b = 2
+    simulation_result = pyqsl.run(simple_task, settings, disable_progress_bar=True)
+    assert simulation_result.a == 3
