@@ -1,6 +1,18 @@
 Changelog
 =========
+Version 3.4 (2024-10-27)
+------------------------
 
+Features
+--------
+  - Add option to disable tqdm.
+  - Improve relation resolution exception messages.
+  - Add support for interpolation options in Lookup-tables.
+
+Bug Fixes
+---------
+  - Fix small typos in README.
+  
 Version 3.3 (2024-03-23)
 ------------------------
 
