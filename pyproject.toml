@@ -27,13 +27,13 @@ dependencies = [
 "pint-xarray",
 ]
 
-version = "3.3"
+version = "3.4"
 
 [project.optional-dependencies]
 testing = [
 "pytest",
 "tox",
-"black",
+"black >= 24.8, <25.0",
 "isort",
 "sphinx",
 "pylint",
@@ -60,6 +60,9 @@ max-line-length=120
 max-args=10
 max-locals=25
 max-statements=60
+max-nested-blocks=7
+max-branches=15
+max-positional-arguments=12
 disable = [
     "W0511",  # This is the message ID for TODO warnings
 ]

@@ -4,6 +4,7 @@ Defines many-to-many relations.
 Classes:
   * ManyToManyRelation
 """
+
 import dataclasses
 from typing import Any
 

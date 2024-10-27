@@ -6,6 +6,7 @@ Classes:
     * Setting
     * Settings
 """
+
 from __future__ import annotations
 
 import collections
@@ -429,35 +430,50 @@ class Settings:
         if not is_acyclic(relation_graph):
             raise ValueError("Cyclic relations detected.")
         # Resolve values
+
         nodes = list(nx.topological_sort(relation_graph))
         for node in nodes:
-            setting = self[node]
-            if setting.has_active_relation() and not isinstance(
-                setting.relation, EvaluatedManyToManyRelation
-            ):
-                setting.relation.resolve(self)
-                nodes_with_relation.append(node)
-            elif setting.name in many_to_many_relation_map:
-                relation = many_to_many_relation_map[setting.name]
-                if relation not in evaluated_many_to_many_relations:
-                    relation.resolve(self)
-                    for (
-                        output_setting_name,
-                        function_argument_name_or_index,
-                    ) in relation.output_parameters.items():
-                        dummy_relation = EvaluatedManyToManyRelation(
-                            parameters={}, source=str(relation)
-                        )
-                        if relation.evaluated_value is not None:
-                            dummy_relation.evaluated_value = relation.evaluated_value[
-                                function_argument_name_or_index
-                            ]
-                        else:
-                            dummy_relation.evaluated_value = None
-                        self[output_setting_name].relation = dummy_relation
-                        nodes_with_relation.append(output_setting_name)
-                    evaluated_many_to_many_relations.add(relation)
-
+            try:
+                setting = self[node]
+            except KeyError as kerr:
+                successor = list(relation_graph.successors(node))[0]
+                raise KeyError(
+                    f"When evaluating relations, setting with name { node } "
+                    + "could not be found but was used as a parameter "
+                    + f"for relation { successor }."
+                ) from kerr
+            try:
+                if setting.has_active_relation() and not isinstance(
+                    setting.relation, EvaluatedManyToManyRelation
+                ):
+                    setting.relation.resolve(self)
+                    nodes_with_relation.append(node)
+                elif setting.name in many_to_many_relation_map:
+                    relation = many_to_many_relation_map[setting.name]
+                    if relation not in evaluated_many_to_many_relations:
+                        relation.resolve(self)
+                        for (
+                            output_setting_name,
+                            function_argument_name_or_index,
+                        ) in relation.output_parameters.items():
+                            dummy_relation = EvaluatedManyToManyRelation(
+                                parameters={}, source=str(relation)
+                            )
+                            if relation.evaluated_value is not None:
+                                dummy_relation.evaluated_value = (
+                                    relation.evaluated_value[
+                                        function_argument_name_or_index
+                                    ]
+                                )
+                            else:
+                                dummy_relation.evaluated_value = None
+                            self[output_setting_name].relation = dummy_relation
+                            nodes_with_relation.append(output_setting_name)
+                        evaluated_many_to_many_relations.add(relation)
+            except Exception as err:
+                raise RelationEvaluationError(
+                    f"Failed resolving relations for setting {setting.name}."
+                ) from err
         dimensions = set()
         for setting in self:
             if setting.dimensions:
@@ -528,7 +544,6 @@ class Settings:
         """
         relation_graph = self.get_relation_hierarchy()
         pos = _hierarchical_layout(relation_graph, orientation="v")
-        # pos=nx.spring_layout(relation_graph)
         nx.draw(relation_graph, pos, with_labels=True)
         labels = {node: node for node in relation_graph.nodes}
         edge_labels = nx.get_edge_attributes(relation_graph, "name")
@@ -659,4 +674,8 @@ from .many_to_many_relation import (  # pylint: disable=wrong-import-position
 )
 
 # Avoid cyclic import
-from .relation import Equation, Relation  # pylint: disable=wrong-import-position
+from .relation import (  # pylint: disable=wrong-import-position
+    Equation,
+    Relation,
+    RelationEvaluationError,
+)

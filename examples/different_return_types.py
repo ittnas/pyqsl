@@ -39,7 +39,7 @@ output = pyqsl.run(
     settings=settings,
     sweeps=sweep_arrays,
     parallelize=False,
-    expand_data=False,
+    expand_data=True, # If set to False, will not succeed.
 )
 
 

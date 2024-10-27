@@ -1,6 +1,7 @@
 """
 Definitions used by more than one other module.
 """
+
 from __future__ import annotations
 
 import logging
@@ -111,7 +112,12 @@ def vstack_and_reshape(array: np.ndarray) -> np.ndarray:
 
 
 def resolve_relations_with_sweeps(
-    settings: Settings, sweeps: SweepsStandardType, n_cores, pool, parallelize=True
+    settings: Settings,
+    sweeps: SweepsStandardType,
+    n_cores,
+    pool,
+    parallelize: bool = True,
+    disable_progress_bar=False,
 ) -> xr.Dataset:
     """
     Resolves relations when some of them are swept.
@@ -126,6 +132,10 @@ def resolve_relations_with_sweeps(
     Args:
         settings: Settings object with all the relations resolved.
         sweeps: Sweeps for which the settings are re-evalauted.
+        n_cores: Number of cores to use when parallelizing task.
+        pool: Worker pool used for executing the task.
+        parallelize: If True, settings are resolved in parellel.
+        disable_progress_bar: If True, do not show progres bar.
 
     Returns:
         Dataset which datavars are the setting names, coordinates are the sweeps
@@ -144,7 +154,9 @@ def resolve_relations_with_sweeps(
 
     evaluated_many_to_many_relations: Set[Any] = set()
     nodes = list(nx.topological_sort(relation_graph))
-    for node in (pbar := tqdm.tqdm(nodes, total=len(nodes))):
+    for node in (
+        pbar := tqdm.tqdm(nodes, total=len(nodes), disable=disable_progress_bar)
+    ):
         setting = settings[node]
         pbar.set_description(f"Resolving relations for {setting.name}")
         sweeps_for_node = []
@@ -323,9 +335,11 @@ def _evaluate_relation_in_loop(
     setting_dict: dict[str, Any], relation, settings: Settings
 ):
     parameter_dict = {
-        parameter_name: setting_dict[setting_name]
-        if setting_name in setting_dict
-        else settings[setting_name].value
+        parameter_name: (
+            setting_dict[setting_name]
+            if setting_name in setting_dict
+            else settings[setting_name].value
+        )
         for parameter_name, setting_name in relation.parameters.items()
     }
     return relation.evaluate(**parameter_dict)

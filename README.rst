@@ -9,12 +9,12 @@ Installation
 ------------
 pyqsl is available through PyPI and can be installed with pip. ::
 
-  pip intall pyqsl
+  pip install pyqsl
   
-For manual installation, first clone the repository and enter the directory. There run ::
+For manual installation, first clone the repository and enter the directory. Then run ::
 
   git clone https://github.com/ittnas/pyqsl.git
-  pip install ./pyqsl
+  pip install -e ./pyqsl
 
 For running the examples, the additional requirements can be installed as ::
 

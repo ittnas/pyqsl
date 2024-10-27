@@ -12,6 +12,7 @@ Classes:
     * LookupTable
     * Function
 """
+
 import copy
 import dataclasses
 import inspect
@@ -128,6 +129,12 @@ class Relation(ABC):
         return False
 
 
+class RelationEvaluationError(Exception):
+    """
+    Error related to relation evaluation.
+    """
+
+
 @dataclasses.dataclass
 class Equation(Relation):
     """
@@ -198,11 +205,14 @@ class Equation(Relation):
 @dataclasses.dataclass
 class LookupTable(Relation):
     """
-    Implements a lookup table for parameter values.
+    Implements a multi-dimensional lookup table for parameter values.
 
     Attributes:
-        data:
-        coordinates:
+        data: Data points for the lookup-table given as an N-dimensional array.
+        coordinates: A dictionary of the coordinate name-value pairs.
+        interpolation_options:
+            Key-value pairs for the options used for interpolation. The keys must parameter names
+            accepted by scipy.interpolate.interpn.
 
     Examples:
     ``LookupTable(data=[4, 0, 4], coordinates={'x': [-2, 0, 2]})``
@@ -214,10 +224,19 @@ class LookupTable(Relation):
         data=np.ones(3,2), coordinates={'x': [-2, 0, 2], 'y': [0, 1]}, parameters={'x': 'amplitude', 'y': 'frequency'
         )
     ``
+
+    ``
+        LookupTable(
+            data=[4, 0, 4],
+            coordinates={'x': [-2, 0, 2]},
+            parameters={'x': 'amplitude'),
+            interpolation_options = {'fill_value': -2, 'bounds_error': False}
+       )
     """
 
     data: Any = None
     coordinates: Optional[dict[str, Any]] = None
+    interpolation_options: dict[str, Any] | None = None
 
     def __post_init__(self):
         """
@@ -250,7 +269,7 @@ class LookupTable(Relation):
         point = [parameter_values[coordinate] for coordinate in self.coordinates]
         points = list(self.coordinates.values())
         values = self.data
-        result = interpn(points, values, point)
+        result = interpn(points, values, point, **(self.interpolation_options or {}))
 
         try:
             # interpn creates 0-d arrays from scalars. Try to convert back.
