@@ -22,6 +22,7 @@ to perform the simulation in parallel.
 
 The results can be saved to a file using the ``save`` method in simulation result.
 """
+
 import logging
 from logging import NullHandler
 

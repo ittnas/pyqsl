@@ -12,6 +12,7 @@ Classes:
     * LookupTable
     * Function
 """
+
 import copy
 import dataclasses
 import inspect
@@ -126,6 +127,12 @@ class Relation(ABC):
         if isinstance(other, type(self)):
             return self.identifier == other.identifier
         return False
+
+
+class RelationEvaluationError(Exception):
+    """
+    Error related to relation evaluation.
+    """
 
 
 @dataclasses.dataclass

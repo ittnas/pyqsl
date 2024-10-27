@@ -5,6 +5,7 @@ Classes:
 
 * SimulationResult
 """
+
 import logging
 import pickle
 from typing import Any, Optional, Union

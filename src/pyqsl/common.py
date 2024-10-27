@@ -1,6 +1,7 @@
 """
 Definitions used by more than one other module.
 """
+
 from __future__ import annotations
 
 import logging
@@ -334,9 +335,11 @@ def _evaluate_relation_in_loop(
     setting_dict: dict[str, Any], relation, settings: Settings
 ):
     parameter_dict = {
-        parameter_name: setting_dict[setting_name]
-        if setting_name in setting_dict
-        else settings[setting_name].value
+        parameter_name: (
+            setting_dict[setting_name]
+            if setting_name in setting_dict
+            else settings[setting_name].value
+        )
         for parameter_name, setting_name in relation.parameters.items()
     }
     return relation.evaluate(**parameter_dict)

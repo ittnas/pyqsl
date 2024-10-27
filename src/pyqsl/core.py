@@ -3,6 +3,7 @@ This module contains the core functionality of pyqsl simulation loop.
 
 pyqsl simulation is done by calling the ``run`` function in this module.
 """
+
 import collections
 import copy
 import datetime
@@ -236,9 +237,7 @@ def run(
         used_cores = (
             max_nbr_cores
             if n_cores is None
-            else np.max([max_nbr_cores + n_cores, 1])
-            if n_cores < 0
-            else n_cores
+            else np.max([max_nbr_cores + n_cores, 1]) if n_cores < 0 else n_cores
         )
         pool = mp.Pool(processes=used_cores)
         execution_settings = {"chunksize": calculate_chunksize(used_cores, N_tot)}
@@ -641,9 +640,11 @@ def _add_dimensions_to_data_var(
             if setting.name not in data_vars:
                 data_vars[setting.name] = (
                     setting.dimensions,
-                    vstack_and_reshape(setting_values[setting.name].values)
-                    if setting.name in setting_values
-                    else setting.value,
+                    (
+                        vstack_and_reshape(setting_values[setting.name].values)
+                        if setting.name in setting_values
+                        else setting.value
+                    ),
                     {},
                 )
             else:
