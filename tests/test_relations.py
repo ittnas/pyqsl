@@ -230,3 +230,11 @@ def test_function():
     parameters_with_relations = settings.resolve_relations()
     assert parameters_with_relations == ["b", "e"]
     assert settings.e.value == pytest.approx(2.0)
+
+
+def test_errors_in_relations():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = pyqsl.Setting(relation='ab')
+    with pytest.raises(KeyError):
+        settings.resolve_relations()
