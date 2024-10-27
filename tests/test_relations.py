@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 import pyqsl
+from pyqsl.relation import RelationEvaluationError
 
 
 def test_that_abstract_relation_cannot_be_created():
@@ -181,6 +182,21 @@ def test_nested_lookup_and_equation(settings):
     settings.resolve_relations()
     assert pytest.approx(settings.amplitude.value) == 1.2
 
+
+def test_lookup_table_options(settings):
+    settings.amplitude.relation = pyqsl.LookupTable(
+        coordinates={"frequency": [0, 1, 2]}, data=[0.1, 0.2, 0.3]
+    )
+    settings.frequency = -1
+    with pytest.raises(RelationEvaluationError):
+        settings.resolve_relations()
+
+    fill_value = -0.1
+    settings.amplitude.relation.interpolation_options = {'fill_value': fill_value, "bounds_error": False}
+    settings.resolve_relations()
+    assert settings.amplitude.value == fill_value
+        
+    
 
 def test_nodes_with_relation_is_correct():
     settings = pyqsl.Settings()
