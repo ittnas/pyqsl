@@ -439,7 +439,7 @@ class Settings:
                 successor = list(relation_graph.successors(node))[0]
                 raise KeyError(
                     f"When evaluating relations, setting with name { node } "
-                    + "could not be found but was used as a parameter "
+                    + "could not be found even though it was used as a parameter "
                     + f"for relation { successor }."
                 ) from kerr
             try:
@@ -513,18 +513,29 @@ class Settings:
                 if dependent_setting not in relation_graph:
                     relation_graph.add_node(dependent_setting)
                 for output_setting in relation.get_mapped_output_setting_names():
-                    if output_setting not in relation_graph:
-                        relation_graph.add_node(output_setting)
-                    elif self[output_setting].has_active_relation() and not isinstance(
-                        self[output_setting].relation, EvaluatedManyToManyRelation
-                    ):
-                        raise ValueError(
-                            f'Output "{output_setting}" of a many-to-many relation "{relation}"'
-                            + f' overlaps with an existing relation "{self[output_setting].relation}".'
+                    try:
+                        if output_setting not in relation_graph:
+                            relation_graph.add_node(output_setting)
+                        elif self[
+                            output_setting
+                        ].has_active_relation() and not isinstance(
+                            self[output_setting].relation, EvaluatedManyToManyRelation
+                        ):
+                            raise ValueError(
+                                f'Output "{output_setting}" of a many-to-many relation "{relation}"'
+                                + f' overlaps with an existing relation "{self[output_setting].relation}".'
+                            )
+                        relation_graph.add_edge(
+                            dependent_setting, output_setting, name=(relation)
                         )
-                    relation_graph.add_edge(
-                        dependent_setting, output_setting, name=(relation)
-                    )
+                    except KeyError as err:
+                        message = f"Failed resolving {relation} for output parameter {output_setting}."
+                        if output_setting not in self:
+                            message += (
+                                f' This is likely because required setting "{output_setting}"'
+                                + " is not found in settings."
+                            )
+                        raise RelationEvaluationError(message) from err
         return relation_graph
 
     def get_many_to_many_relation_map(self) -> dict[str, ManyToManyRelation]:
