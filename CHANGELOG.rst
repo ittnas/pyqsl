@@ -1,5 +1,11 @@
 Changelog
 =========
+Version 3.5 (2024-12-08)
+------------------------
+Bug Fixes
+---------
+   - Fix a bug where nested relations could not be evaluated when part of a sweep.
+
 Version 3.4 (2024-10-27)
 ------------------------
 
