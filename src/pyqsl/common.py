@@ -334,14 +334,27 @@ def _evaluate_relation_with_sweeps(
 def _evaluate_relation_in_loop(
     setting_dict: dict[str, Any], relation, settings: Settings
 ):
-    parameter_dict = {
-        parameter_name: (
-            setting_dict[setting_name]
-            if setting_name in setting_dict
-            else settings[setting_name].value
-        )
-        for parameter_name, setting_name in relation.parameters.items()
-    }
+    parameter_dict = {}
+    for parameter_name, setting_name in relation.parameters.items():
+        if isinstance(setting_name, Relation):
+            parameter_dict[parameter_name] = _evaluate_relation_in_loop(
+                setting_dict, setting_name, settings
+            )
+        else:
+            parameter_dict[parameter_name] = (
+                setting_dict[setting_name]
+                if setting_name in setting_dict
+                else settings[setting_name].value
+            )
+
+    # parameter_dict = {
+    #     parameter_name: (
+    #         setting_dict[setting_name]
+    #         if setting_name in setting_dict
+    #         else settings[setting_name].value
+    #     )
+    #     for parameter_name, setting_name in relation.parameters.items()
+    # }
     return relation.evaluate(**parameter_dict)
 
 
@@ -448,3 +461,4 @@ def calculate_chunksize(n_cores: int, n_points: int) -> int:
 from pyqsl.many_to_many_relation import (  # pylint: disable=wrong-import-position
     EvaluatedManyToManyRelation,
 )
+from pyqsl.relation import Relation  # pylint: disable=wrong-import-position

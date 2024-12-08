@@ -499,10 +499,40 @@ def test_task_that_adds_new_setting():
     assert result.dataset.settings.c.unit == "kg"
     assert "c" not in settings
 
-    
+
 def test_running_with_disable_progress_bar():
     settings = pyqsl.Settings()
     settings.a = 3
     settings.b = 2
     simulation_result = pyqsl.run(simple_task, settings, disable_progress_bar=True)
     assert simulation_result.a == 3
+
+
+def test_sweeps_with_nested_equations():
+    settings = pyqsl.Settings()
+    settings.a = 2
+    settings.b = 3
+    settings.c = pyqsl.Setting(
+        relation=pyqsl.Equation(
+            equation="a + eq", parameters={"a": "a", "eq": pyqsl.Equation(equation="b")}
+        )
+    )
+    result = pyqsl.run(task=None, settings=settings, sweeps={"a": np.linspace(0, 1, 3)})
+    assert list(result.dataset.c.values) == [
+        settings.b + 0,
+        settings.b + 0.5,
+        settings.b + 1.0,
+    ]
+    result = pyqsl.run(task=None, settings=settings, sweeps={"b": np.linspace(1, 2, 4)})
+    assert pytest.approx(list(result.dataset.c.values)) == [
+        settings.a + 1,
+        settings.a + 1 + 1.0 / 3,
+        settings.a + 1 + 2.0 / 3,
+        settings.a + 2.0,
+    ]
+    result = pyqsl.run(
+        task=None,
+        settings=settings,
+        sweeps={"a": np.linspace(0, 1, 3), "b": np.linspace(1, 2, 4)},
+    )
+    assert result.dataset.c.shape == (3, 4)

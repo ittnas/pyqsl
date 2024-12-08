@@ -192,11 +192,13 @@ def test_lookup_table_options(settings):
         settings.resolve_relations()
 
     fill_value = -0.1
-    settings.amplitude.relation.interpolation_options = {'fill_value': fill_value, "bounds_error": False}
+    settings.amplitude.relation.interpolation_options = {
+        "fill_value": fill_value,
+        "bounds_error": False,
+    }
     settings.resolve_relations()
     assert settings.amplitude.value == fill_value
-        
-    
+
 
 def test_nodes_with_relation_is_correct():
     settings = pyqsl.Settings()
@@ -251,6 +253,6 @@ def test_function():
 def test_errors_in_relations():
     settings = pyqsl.Settings()
     settings.a = 2
-    settings.b = pyqsl.Setting(relation='ab')
+    settings.b = pyqsl.Setting(relation="ab")
     with pytest.raises(KeyError):
         settings.resolve_relations()
