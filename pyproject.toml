@@ -20,14 +20,14 @@ dependencies = [
 "matplotlib",
 "tqdm",
 "numexpr",
-"networkx",
+"networkx>=3.4",
 "xarray",
 "psutil",
 "pint",
 "pint-xarray",
 ]
 
-version = "3.4"
+version = "3.5"
 
 [project.optional-dependencies]
 testing = [

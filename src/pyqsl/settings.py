@@ -17,7 +17,9 @@ import types
 from dataclasses import dataclass
 from typing import Any, Optional, Sequence, Union
 
+import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 
 logger = logging.getLogger(__name__)
 # pyright: reportPropertyTypeMismatch=false
@@ -439,7 +441,7 @@ class Settings:
                 successor = list(relation_graph.successors(node))[0]
                 raise KeyError(
                     f"When evaluating relations, setting with name { node } "
-                    + "could not be found but was used as a parameter "
+                    + "could not be found even though it was used as a parameter "
                     + f"for relation { successor }."
                 ) from kerr
             try:
@@ -513,18 +515,29 @@ class Settings:
                 if dependent_setting not in relation_graph:
                     relation_graph.add_node(dependent_setting)
                 for output_setting in relation.get_mapped_output_setting_names():
-                    if output_setting not in relation_graph:
-                        relation_graph.add_node(output_setting)
-                    elif self[output_setting].has_active_relation() and not isinstance(
-                        self[output_setting].relation, EvaluatedManyToManyRelation
-                    ):
-                        raise ValueError(
-                            f'Output "{output_setting}" of a many-to-many relation "{relation}"'
-                            + f' overlaps with an existing relation "{self[output_setting].relation}".'
+                    try:
+                        if output_setting not in relation_graph:
+                            relation_graph.add_node(output_setting)
+                        elif self[
+                            output_setting
+                        ].has_active_relation() and not isinstance(
+                            self[output_setting].relation, EvaluatedManyToManyRelation
+                        ):
+                            raise ValueError(
+                                f'Output "{output_setting}" of a many-to-many relation "{relation}"'
+                                + f' overlaps with an existing relation "{self[output_setting].relation}".'
+                            )
+                        relation_graph.add_edge(
+                            dependent_setting, output_setting, name=(relation)
                         )
-                    relation_graph.add_edge(
-                        dependent_setting, output_setting, name=(relation)
-                    )
+                    except KeyError as err:
+                        message = f"Failed resolving {relation} for output parameter {output_setting}."
+                        if output_setting not in self:
+                            message += (
+                                f' This is likely because required setting "{output_setting}"'
+                                + " is not found in settings."
+                            )
+                        raise RelationEvaluationError(message) from err
         return relation_graph
 
     def get_many_to_many_relation_map(self) -> dict[str, ManyToManyRelation]:
@@ -540,15 +553,53 @@ class Settings:
 
     def draw_relation_hierarchy(self):
         """
-        Draws the current relation hierarchy.
+        Draws the relation hierarchy as a graph.
         """
         relation_graph = self.get_relation_hierarchy()
-        pos = _hierarchical_layout(relation_graph, orientation="v")
-        nx.draw(relation_graph, pos, with_labels=True)
-        labels = {node: node for node in relation_graph.nodes}
-        edge_labels = nx.get_edge_attributes(relation_graph, "name")
-        nx.draw_networkx_labels(relation_graph, pos, labels, font_size=12)
-        nx.draw_networkx_edge_labels(relation_graph, pos, edge_labels=edge_labels)
+
+        graph = nx.DiGraph()
+        for node in relation_graph.nodes:
+            graph.add_node(node, node_type="setting", name="node")
+
+        def add_relation_node(relation, graph, main_name):
+            relation_node = main_name + "_" + str(relation)
+            graph.add_node(relation_node, node_type="relation", name=str(relation))
+            if relation is not None:
+                for parameter, setting in relation.parameters.items():
+                    if isinstance(setting, Relation):
+                        created_node = add_relation_node(
+                            setting, graph, main_name=main_name + "_" + parameter
+                        )
+                        graph.add_edge(created_node, relation_node, name=parameter)
+                    else:
+                        graph.add_edge(setting, relation_node, name=parameter)
+            return relation_node
+
+        for node_with_relation in relation_graph.nodes:
+            if self[node_with_relation].has_active_relation():
+                relation = self[node_with_relation].relation
+                if not isinstance(relation, EvaluatedManyToManyRelation):
+                    relation_node = add_relation_node(
+                        relation, graph, main_name="_" + node_with_relation
+                    )
+                    graph.add_edge(relation_node, node_with_relation, name="")
+
+        for many_to_many in self._many_to_many_relations:
+            output_args_string = ""
+            for parameter in many_to_many.output_parameters.values():
+                output_args_string.join(f"_{parameter}")
+            m2m_node = output_args_string + "_" + str(many_to_many)
+            graph.add_node(m2m_node, node_type="many_to_many", name=str(many_to_many))
+            for param, setting in many_to_many.output_parameters.items():
+                graph.add_edge(m2m_node, setting, name=param)
+            for param, setting in many_to_many.parameters.items():
+                graph.add_edge(setting, m2m_node, name=param)
+
+        ##
+        for ii, generation in enumerate(nx.topological_generations(graph)):
+            for node in generation:
+                graph.nodes[node]["layer"] = ii
+        _make_relation_hierarchy_plot(graph)
 
     def get_dependent_setting_names(
         self, setting: Setting, relation_hierarchy: Optional[nx.DiGraph] = None
@@ -621,6 +672,66 @@ def is_acyclic(graph: nx.DiGraph) -> bool:
     for _ in nx.simple_cycles(graph):
         return False
     return True
+
+
+def _make_relation_hierarchy_plot(graph):
+    plt.figure()
+    ax = plt.gca()
+
+    pos = nx.multipartite_layout(graph, subset_key="layer")
+    edge_labels = nx.get_edge_attributes(graph, "name")
+
+    node_attributes = nx.get_node_attributes(graph, "name")
+    node_types = nx.get_node_attributes(graph, "node_type")
+    annotations = {}
+    for node in graph.nodes:
+        if node_types[node] == "setting":
+            annotations[node] = ax.annotate(
+                node, xy=pos[node], xycoords="data", bbox={"facecolor": "C0"}
+            )
+        else:
+            annotations[node] = ax.annotate(
+                node_attributes[node],
+                xy=pos[node],
+                xycoords="data",
+                bbox={"facecolor": "C1"},
+            )
+    xmin = np.inf
+    xmax = -np.inf
+    ymin = np.inf
+    ymax = -np.inf
+    for node_pos in pos.values():
+        xmin = node_pos[0] if node_pos[0] < xmin else xmin
+        xmax = node_pos[0] if node_pos[0] > xmax else xmax
+        ymin = node_pos[1] if node_pos[1] < ymin else ymin
+        ymax = node_pos[1] if node_pos[1] > ymax else ymax
+    for node_a, node_b in graph.edges:
+        arr_args = {
+            "arrowstyle": "fancy",
+            "color": "0.8",
+            "patchA": annotations[node_a],
+            "patchB": annotations[node_b],
+            "shrinkA": 1.5,
+            "connectionstyle": "arc3, rad=0.0",
+        }
+        ax.annotate(
+            "",
+            xy=pos[node_b],
+            xycoords="data",
+            xytext=pos[node_a],
+            textcoords="data",
+            arrowprops=arr_args,
+        )
+        ax.annotate(
+            edge_labels[(node_a, node_b)],
+            xy=pos[node_b],
+            xycoords="data",
+            xytext=pos[node_a] + 0.7 * (pos[node_b] - pos[node_a]),
+            textcoords="data",
+        )
+    plt.xlim([xmin, xmax])
+    plt.ylim([ymin, ymax])
+    plt.axis("off")
 
 
 def _hierarchical_layout(

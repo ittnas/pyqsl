@@ -6,6 +6,11 @@ Bug Fixes
 ---------
    - Fix a bug where nested relations could not be evaluated when part of a sweep.
 
+Features
+--------
+   - Improve error message when many-to-many when an output argument for many-to-many relation is missing.
+   - Improve the visuals for draw_relation_hierarchy.
+
 Version 3.4 (2024-10-27)
 ------------------------
 
