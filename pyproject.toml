@@ -20,7 +20,7 @@ dependencies = [
 "matplotlib",
 "tqdm",
 "numexpr",
-"networkx",
+"networkx>=3.4",
 "xarray",
 "psutil",
 "pint",
