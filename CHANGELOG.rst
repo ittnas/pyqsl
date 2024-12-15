@@ -9,6 +9,7 @@ Bug Fixes
 Features
 --------
    - Improve error message when many-to-many when an output argument for many-to-many relation is missing.
+   - Improve the visuals for draw_relation_hierarchy.
 
 Version 3.4 (2024-10-27)
 ------------------------
